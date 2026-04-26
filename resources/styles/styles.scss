@@ -1,0 +1,18 @@
+// Write your overrides
+
+// 👉 Cairo font - Arabic typography
+body,
+input,
+textarea,
+select,
+button,
+.v-application {
+  font-family: "Cairo", sans-serif !important;
+}
+
+// 👉 Improve Arabic number rendering
+.v-data-table,
+.v-card,
+.v-list {
+  font-family: "Cairo", sans-serif;
+}
