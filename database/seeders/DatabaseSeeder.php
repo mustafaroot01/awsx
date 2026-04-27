@@ -15,12 +15,15 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        // إن لم يكن لديك بيانات، يمكنك إلغاء تفعيل الـ factory نهائياً هنا
 
-        User::factory()->create([
-            'name' => 'مدير النظام',
-            'email' => 'admin@admin.com',
-            'password' => bcrypt('00000000'),
-        ]);
+        User::updateOrCreate(
+            ['email' => 'admin@admin.com'],
+            [
+                'name' => 'مدير النظام',
+                'password' => bcrypt('00000000'),
+                'email_verified_at' => now(),
+            ]
+        );
     }
 }
