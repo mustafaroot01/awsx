@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import AcademyAssignmentProgress from '@/views/apps/academy/AcademyAssignmentProgress.vue'
 import AcademyCardPopularInstructors from '@/views/apps/academy/AcademyCardPopularInstructors.vue'
-import AcademyCardTopCourses from '@/views/apps/academy/AcademyCardTopCourses.vue'
 import AcademyCourseTable from '@/views/apps/academy/AcademyCourseTable.vue'
 import AcademyTopicYouAreInterested from '@/views/apps/academy/AcademyTopicYouAreInterested.vue'
 import AcademyUpcomingWebinar from '@/views/apps/academy/AcademyUpcomingWebinar.vue'
@@ -211,15 +210,6 @@ const timeSpendingChartSeries = [23, 35, 10, 20, 35, 23]
         sm="6"
       >
         <AcademyCardPopularInstructors />
-      </VCol>
-
-      <!-- 👉 Academy Top Courses  -->
-      <VCol
-        cols="12"
-        md="4"
-        sm="6"
-      >
-        <AcademyCardTopCourses />
       </VCol>
 
       <!-- 👉 Academy Upcoming Webinar -->
