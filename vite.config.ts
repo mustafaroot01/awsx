@@ -1,8 +1,8 @@
-import { fileURLToPath } from 'node:url'
-import laravel from 'laravel-vite-plugin'
 import VueI18nPlugin from '@intlify/unplugin-vue-i18n/vite'
 import vue from '@vitejs/plugin-vue'
 import vueJsx from '@vitejs/plugin-vue-jsx'
+import laravel from 'laravel-vite-plugin'
+import { fileURLToPath } from 'node:url'
 import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
 import { VueRouterAutoImports, getPascalCaseRouteName } from 'unplugin-vue-router'
@@ -22,11 +22,6 @@ export default defineConfig({
         return getPascalCaseRouteName(routeNode)
           .replace(/([a-z\d])([A-Z])/g, '$1-$2')
           .toLowerCase()
-      },
-
-      beforeWriteFiles: root => {
-        root.insert('/apps/email/:filter', '/resources/ts/pages/apps/email/index.vue')
-        root.insert('/apps/email/:label', '/resources/ts/pages/apps/email/index.vue')
       },
 
       routesFolder: 'resources/ts/pages',
