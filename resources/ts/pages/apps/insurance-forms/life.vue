@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { reactive } from 'vue'
 import { useRouter } from 'vue-router'
-definePage({ meta: { action: 'read', subject: 'Auth' } })
+definePage({ meta: { action: 'create', subject: 'Policy' } })
 const router = useRouter()
 
 interface BRow { name: string; age: string; share: string }

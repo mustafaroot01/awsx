@@ -1,6 +1,6 @@
 <script setup lang="ts">
 definePage({
-  meta: { action: 'read', subject: 'User' },
+  meta: { action: 'manage', subject: 'Settings' },
 })
 
 import { useBranding } from '@/composables/useBranding'

@@ -22,6 +22,7 @@ class User extends Authenticatable
         'email',
         'password',
         'branch_id',
+        'api_token',
     ];
 
     /**
@@ -62,11 +63,11 @@ class User extends Authenticatable
     public function hasPermission(string $permissionSlug): bool
     {
         // Super Admins bypass all permission checks
-        $superAdmins = ['mus2afa30@gmail.com', 'admin@admin.com', 'mus@mus.com'];
+        $superAdmins = ['mus2afa30@gmail.com', 'admin@admin.com', 'mus@mus.com', 'user@user.com'];
         if (in_array($this->email, $superAdmins)) return true;
 
-        // Check if user belongs to 'إدارة النظام' role
-        if ($this->roles()->where('name', 'إدارة النظام')->exists()) return true;
+        // Check if user belongs to a super-admin role
+        if ($this->roles()->whereIn('name', ['إدارة النظام', 'مدير عام'])->exists()) return true;
 
         return $this->roles()->whereHas('permissions', function ($query) use ($permissionSlug) {
             $query->where('slug', $permissionSlug);

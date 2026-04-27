@@ -11,10 +11,7 @@ const yearOptions = Array.from({ length: 5 }, (_, i) => {
 })
 
 const userData = useCookie<any>('userData')
-const isAdmin = computed(() => {
-  const superAdmins = ['mus2afa30@gmail.com', 'admin@admin.com', 'mus@mus.com']
-  return userData.value?.role === 'admin' || superAdmins.includes(userData.value?.email)
-})
+const isAdmin = computed(() => userData.value?.role === 'admin')
 const branchId = computed(() => userData.value?.branch_id)
 const isBranchManager = computed(() => !isAdmin.value && !!branchId.value)
 

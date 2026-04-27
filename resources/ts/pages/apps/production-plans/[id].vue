@@ -2,7 +2,7 @@
 import { useRouter, useRoute } from 'vue-router'
 
 definePage({
-  meta: { action: 'read', subject: 'Auth' },
+  meta: { action: 'read', subject: 'ProductionPlan' },
 })
 
 const router = useRouter()

@@ -279,7 +279,7 @@ const deleteRole = async () => {
         <p class="text-sm text-muted mb-0">إدارة وتخصيص مستويات الوصول لمستخدمي النظام</p>
       </div>
       <div class="d-flex gap-3">
-        <VBtn color="primary" prepend-icon="tabler-plus" @click="addNewRole">إضافة مجموعة جديدة</VBtn>
+        <VBtn v-if="$can('create', 'Role')" color="primary" prepend-icon="tabler-plus" @click="addNewRole">إضافة مجموعة جديدة</VBtn>
         <VBtn variant="tonal" color="secondary" prepend-icon="tabler-refresh" @click="fetchRoles">تحديث</VBtn>
       </div>
     </div>
@@ -291,7 +291,7 @@ const deleteRole = async () => {
           <VCardText class="d-flex align-center pb-4">
             <div class="text-body-1 font-weight-medium text-muted">إجمالي {{ item.users_count }} مستخدمين</div>
             <VSpacer />
-            <IconBtn color="error" variant="text" size="small" @click="confirmDelete(item)" title="حذف المجموعة">
+            <IconBtn v-if="$can('delete', 'Role')" color="error" variant="text" size="small" @click="confirmDelete(item)" title="حذف المجموعة">
               <VIcon icon="tabler-trash" size="20" />
             </IconBtn>
           </VCardText>
@@ -300,7 +300,7 @@ const deleteRole = async () => {
             <div class="d-flex justify-space-between align-end">
               <div>
                 <h5 class="text-h5 mb-1">{{ item.name }}</h5>
-                <a href="javascript:void(0)" class="text-primary font-weight-bold text-sm" @click="editRole(item)">تعديل الصلاحيات</a>
+                <a v-if="$can('update', 'Role')" href="javascript:void(0)" class="text-primary font-weight-bold text-sm" @click="editRole(item)">تعديل الصلاحيات</a>
               </div>
               <VAvatar color="primary" variant="tonal" size="42" class="rounded">
                 <VIcon icon="tabler-shield-lock" size="24" />

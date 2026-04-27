@@ -3,7 +3,7 @@ import { nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 
 definePage({
-  meta: { action: 'read', subject: 'Auth' },
+  meta: { action: 'create', subject: 'ProductionPlan' },
 })
 
 const router = useRouter()

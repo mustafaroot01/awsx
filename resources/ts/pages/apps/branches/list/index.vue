@@ -5,7 +5,7 @@ import type { Branch, BranchWithNames } from '@db/apps/branches/types'
 definePage({
   meta: {
     action: 'read',
-    subject: 'Auth',
+    subject: 'Branch',
   },
 })
 
@@ -226,6 +226,7 @@ const deleteBranch = async (id: number) => {
 
           <!-- Add New -->
           <VBtn
+            v-if="$can('create', 'Branch')"
             prepend-icon="tabler-plus"
             @click="openAddDrawer"
           >
@@ -319,7 +320,7 @@ const deleteBranch = async (id: number) => {
                 <VDivider class="my-1" />
 
                 <!-- تعديل -->
-                <VListItem @click="openEditDrawer(item)">
+                <VListItem v-if="$can('update', 'Branch')" @click="openEditDrawer(item)">
                   <template #prepend>
                     <VIcon icon="tabler-pencil" />
                   </template>
@@ -327,7 +328,7 @@ const deleteBranch = async (id: number) => {
                 </VListItem>
 
                 <!-- حذف -->
-                <VListItem @click="deleteBranch(item.id)">
+                <VListItem v-if="$can('delete', 'Branch')" @click="deleteBranch(item.id)">
                   <template #prepend>
                     <VIcon icon="tabler-trash" color="error" />
                   </template>

@@ -2,7 +2,7 @@
 import { reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
 
-definePage({ meta: { action: 'read', subject: 'Auth' } })
+definePage({ meta: { action: 'create', subject: 'Policy' } })
 
 const router = useRouter()
 

@@ -6,7 +6,7 @@ import type { Employee } from '@db/apps/employees/types'
 definePage({
   meta: {
     action: 'read',
-    subject: 'Auth',
+    subject: 'Employee',
   },
 })
 
@@ -309,6 +309,7 @@ const deleteEmployee = async (id: number) => {
 
           <!-- Add New -->
           <VBtn
+            v-if="$can('create', 'Employee')"
             prepend-icon="tabler-plus"
             @click="openAddDrawer"
           >
@@ -388,13 +389,13 @@ const deleteEmployee = async (id: number) => {
                   </template>
                   <VListItemTitle>احتساب الحوافز</VListItemTitle>
                 </VListItem>
-                <VListItem @click="openEditDrawer(item)">
+                <VListItem v-if="$can('update', 'Employee')" @click="openEditDrawer(item)">
                   <template #prepend>
                     <VIcon icon="tabler-pencil" />
                   </template>
                   <VListItemTitle>تعديل</VListItemTitle>
                 </VListItem>
-                <VListItem @click="deleteEmployee(item.id)">
+                <VListItem v-if="$can('delete', 'Employee')" @click="deleteEmployee(item.id)">
                   <template #prepend>
                     <VIcon icon="tabler-trash" />
                   </template>

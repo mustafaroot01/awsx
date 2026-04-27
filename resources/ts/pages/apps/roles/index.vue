@@ -1,5 +1,9 @@
 <script setup lang="ts">
 import RoleCards from '@/views/apps/roles/RoleCards.vue'
+
+definePage({
+  meta: { action: 'read', subject: 'Role' },
+})
 </script>
 
 <template>

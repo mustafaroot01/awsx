@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import AddNewUserDrawer from '@/views/apps/user/list/AddNewUserDrawer.vue'
 
+definePage({
+  meta: { action: 'read', subject: 'User' },
+})
+
 // 👉 Store
 const searchQuery = ref('')
 const selectedRole = ref()
@@ -171,6 +175,7 @@ watch(isAddNewUserDrawerVisible, (val) => {
 
         <div class="d-flex align-center flex-wrap gap-4">
           <VBtn
+            v-if="$can('create', 'User')"
             prepend-icon="tabler-plus"
             @click="isAddNewUserDrawerVisible = true"
           >
@@ -240,11 +245,11 @@ watch(isAddNewUserDrawerVisible, (val) => {
         <!-- Actions -->
         <template #item.actions="{ item }">
           <div class="d-flex gap-1" v-if="item.role !== 'إدارة النظام' || isAdmin">
-            <IconBtn color="primary" @click="openEditDrawer(item)">
+            <IconBtn v-if="$can('update', 'User')" color="primary" @click="openEditDrawer(item)">
               <VIcon icon="tabler-edit" />
               <VTooltip activator="parent" location="top">تعديل</VTooltip>
             </IconBtn>
-            <IconBtn color="error" @click="openDeleteConfirm(item.id)">
+            <IconBtn v-if="$can('delete', 'User')" color="error" @click="openDeleteConfirm(item.id)">
               <VIcon icon="tabler-trash" />
               <VTooltip activator="parent" location="top">حذف</VTooltip>
             </IconBtn>

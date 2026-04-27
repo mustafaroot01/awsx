@@ -5,7 +5,7 @@ import type { ProductionPlan } from '@db/apps/production-plans/types'
 const router = useRouter()
 
 definePage({
-  meta: { action: 'read', subject: 'Auth' },
+  meta: { action: 'read', subject: 'ProductionPlan' },
 })
 
 const selectedYear = ref<number | undefined>(undefined)
@@ -144,7 +144,7 @@ const viewPlanTargets = (plan: ProductionPlan) => {
       <VDivider />
 
       <VCardText class="d-flex flex-wrap justify-end gap-4">
-        <VBtn prepend-icon="tabler-plus" @click="openAddPage">إضافة خطة</VBtn>
+        <VBtn v-if="$can('create', 'ProductionPlan')" prepend-icon="tabler-plus" @click="openAddPage">إضافة خطة</VBtn>
       </VCardText>
 
       <VDivider />
@@ -204,15 +204,15 @@ const viewPlanTargets = (plan: ProductionPlan) => {
                   <template #prepend><VIcon icon="tabler-chart-bar" /></template>
                   <VListItemTitle>عرض الإنجازات</VListItemTitle>
                 </VListItem>
-                <VListItem v-if="!item.isLocked" @click="openEditPage(item)">
+                <VListItem v-if="!item.isLocked && $can('update', 'ProductionPlan')" @click="openEditPage(item)">
                   <template #prepend><VIcon icon="tabler-pencil" /></template>
                   <VListItemTitle>تعديل</VListItemTitle>
                 </VListItem>
-                <VListItem v-if="!item.isLocked" @click="lockPlan(item.id)">
+                <VListItem v-if="!item.isLocked && $can('update', 'ProductionPlan')" @click="lockPlan(item.id)">
                   <template #prepend><VIcon icon="tabler-lock" color="warning" /></template>
                   <VListItemTitle>قفل الخطة</VListItemTitle>
                 </VListItem>
-                <VListItem v-if="!item.isLocked" @click="deletePlan(item.id)">
+                <VListItem v-if="!item.isLocked && $can('delete', 'ProductionPlan')" @click="deletePlan(item.id)">
                   <template #prepend><VIcon icon="tabler-trash" /></template>
                   <VListItemTitle>حذف</VListItemTitle>
                 </VListItem>

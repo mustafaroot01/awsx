@@ -8,7 +8,7 @@ import { requiredValidator } from '@core/utils/validators'
 import type { PolicyCategory } from '@db/apps/policies/types'
 
 definePage({
-  meta: { action: 'create', subject: 'Auth' },
+  meta: { action: 'create', subject: 'Policy' },
 })
 
 const router = useRouter()

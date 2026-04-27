@@ -1,6 +1,6 @@
 <script setup lang="ts">
 definePage({
-  meta: { action: 'read', subject: 'User' },
+  meta: { action: 'read', subject: 'Log' },
 })
 
 const { data: logsData, loading } = await useApi<any>('/apps/activity-logs')

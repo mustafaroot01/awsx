@@ -1,17 +1,31 @@
-import type { App } from 'vue'
-import { createMongoAbility } from '@casl/ability'
+import { createMongoAbility, type MongoAbility } from '@casl/ability'
 import { abilitiesPlugin } from '@casl/vue'
 import { useCookie } from '@core/composable/useCookie'
+import type { App } from 'vue'
 
 export type Actions = 'create' | 'read' | 'update' | 'delete' | 'manage' | 'print'
-export type Subjects = 'all' | 'Auth' | 'Employee' | 'Branch' | 'User' | 'Role' | 'Evaluation' | 'ProductionPlan' | 'Policy'
+export type Subjects =
+  | 'all'
+  | 'Auth'
+  | 'Policy'
+  | 'ProductionPlan'
+  | 'Statistics'
+  | 'Branch'
+  | 'Employee'
+  | 'Evaluation'
+  | 'User'
+  | 'Role'
+  | 'Settings'
+  | 'Log'
+
+export type AppAbility = MongoAbility<[Actions, Subjects]>
 
 export interface Rule {
   action: Actions
   subject: Subjects
 }
 
-export const ability = createMongoAbility<Rule>()
+export const ability = createMongoAbility<AppAbility>()
 
 export default function (app: App) {
   const userAbilityRules = useCookie<Rule[]>('userAbilityRules')

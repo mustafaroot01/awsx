@@ -323,6 +323,7 @@ const openPrintDialog = (ev: any) => {
           <VDivider v-if="isAdmin" />
           <VCardActions v-if="isAdmin" class="pa-2">
             <VBtn
+              v-if="$can('create', 'Evaluation')"
               block
               color="primary"
               variant="tonal"
@@ -434,8 +435,8 @@ const openPrintDialog = (ev: any) => {
                   </VBtn>
                   
                   <template v-else>
-                    <VBtn icon variant="text" size="small" color="primary" @click="openEvalDialog(item)"><VIcon icon="tabler-edit" /></VBtn>
-                    <VBtn icon variant="text" size="small" color="error" @click="deleteEvaluation(item.evaluation.id!)"><VIcon icon="tabler-trash" /></VBtn>
+                    <VBtn v-if="$can('update', 'Evaluation')" icon variant="text" size="small" color="primary" @click="openEvalDialog(item)"><VIcon icon="tabler-edit" /></VBtn>
+                    <VBtn v-if="$can('delete', 'Evaluation')" icon variant="text" size="small" color="error" @click="deleteEvaluation(item.evaluation.id!)"><VIcon icon="tabler-trash" /></VBtn>
                   </template>
                 </template>
 

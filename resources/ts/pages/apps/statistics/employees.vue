@@ -1,6 +1,6 @@
 <script setup lang="ts">
 definePage({
-  meta: { action: 'read', subject: 'Employee' },
+  meta: { action: 'read', subject: 'Statistics' },
 })
 
 const selectedYear = ref(new Date().getFullYear())

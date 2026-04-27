@@ -36,58 +36,19 @@ class AuthController extends Controller
                 ->join('role_user', 'permission_role.role_id', '=', 'role_user.role_id')
                 ->where('role_user.user_id', $user->id)
                 ->select('permissions.slug')
+                ->distinct()
                 ->get()
                 ->pluck('slug')
                 ->toArray();
 
             $rules = [];
 
-            // Precise slug → CASL mapping table
-            $slugMap = [
-                // Employees
-                'view_employees'   => ['read',   'Employee'],
-                'add_employee'     => ['create', 'Employee'],
-                'edit_employee'    => ['update', 'Employee'],
-                'delete_employee'  => ['delete', 'Employee'],
-                'export_employees' => ['read',   'Employee'],
-                // Evaluations
-                'view_evaluations' => ['read',   'Evaluation'],
-                'add_evaluation'   => ['create', 'Evaluation'],
-                'edit_evaluation'  => ['update', 'Evaluation'],
-                'delete_evaluation'=> ['delete', 'Evaluation'],
-                'print_evaluation' => ['print',  'Evaluation'],
-                // Branches
-                'view_branches'    => ['read',   'Branch'],
-                'add_branch'       => ['create', 'Branch'],
-                'edit_branch'      => ['update', 'Branch'],
-                'delete_branch'    => ['delete', 'Branch'],
-                // Users
-                'view_users'       => ['read',   'User'],
-                'add_user'         => ['create', 'User'],
-                'edit_user'        => ['update', 'User'],
-                'delete_user'      => ['delete', 'User'],
-                // Roles
-                'view_roles'       => ['read',   'Role'],
-                'add_role'         => ['create', 'Role'],
-                'edit_role'        => ['update', 'Role'],
-                'delete_role'      => ['delete', 'Role'],
-                // Production Plans
-                'view_plans'       => ['read',   'ProductionPlan'],
-                'add_plan'         => ['create', 'ProductionPlan'],
-                'edit_plan'        => ['update', 'ProductionPlan'],
-                'delete_plan'      => ['delete', 'ProductionPlan'],
-                // Policies
-                'view_policies'    => ['read',   'Policy'],
-                'add_policy'       => ['create', 'Policy'],
-                'edit_policy'      => ['update', 'Policy'],
-                'delete_policy'    => ['delete', 'Policy'],
-                // Dashboard
-                'view_dashboard'   => ['read',   'Auth'],
-            ];
-
+            // ── Dynamic auto-parse: slug format "action.Subject" ──
+            // No hardcoded map needed — any new permission added to DB
+            // is automatically reflected in CASL rules on next login.
             foreach ($permissions as $slug) {
-                if (isset($slugMap[$slug])) {
-                    [$action, $subject] = $slugMap[$slug];
+                if (str_contains($slug, '.')) {
+                    [$action, $subject] = explode('.', $slug, 2);
                     $rules[] = ['action' => $action, 'subject' => $subject];
                 }
             }
@@ -97,14 +58,18 @@ class AuthController extends Controller
 
             // Super Admins get full access
             $superAdmins = ['mus2afa30@gmail.com', 'admin@admin.com', 'mus@mus.com', 'user@user.com'];
-            $isSuperAdmin = in_array($user->email, $superAdmins) || $user->roles()->where('name', 'إدارة النظام')->exists();
+            $isSuperAdmin = in_array($user->email, $superAdmins)
+                || $user->roles()->whereIn('name', ['إدارة النظام', 'مدير عام'])->exists();
             
             if ($isSuperAdmin) {
                 $rules = [['action' => 'manage', 'subject' => 'all']];
             }
 
+            $token = bin2hex(random_bytes(40));
+            $user->forceFill(['api_token' => $token])->save();
+
             return response()->json([
-                'accessToken'      => 'token-' . bin2hex(random_bytes(16)),
+                'accessToken'      => $token,
                 'userData'         => [
                     'id'        => $user->id,
                     'fullName'  => $user->name,

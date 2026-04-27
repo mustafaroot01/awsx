@@ -3,7 +3,7 @@ import AddPolicyDrawer from '@/views/apps/policies/list/AddPolicyDrawer.vue'
 import type { Policy } from '@db/apps/policies/types'
 
 definePage({
-  meta: { action: 'read', subject: 'Auth' },
+  meta: { action: 'read', subject: 'Policy' },
 })
 
 const router = useRouter()
@@ -193,7 +193,7 @@ const widgetData = computed(() => [
               prepend-inner-icon="tabler-search"
             />
           </div>
-          <VBtn prepend-icon="tabler-plus" @click="openAddDrawer">إضافة وثيقة</VBtn>
+          <VBtn v-if="$can('create', 'Policy')" prepend-icon="tabler-plus" @click="openAddDrawer">إضافة وثيقة</VBtn>
         </div>
       </VCardText>
 
@@ -256,6 +256,7 @@ const widgetData = computed(() => [
         <template #item.actions="{ item }">
           <div class="d-flex align-center gap-1">
             <VBtn
+              v-if="$can('print', 'Policy')"
               icon
               variant="text"
               color="primary"
@@ -270,11 +271,11 @@ const widgetData = computed(() => [
               <VIcon icon="tabler-dots-vertical" />
               <VMenu activator="parent">
                 <VList>
-                  <VListItem @click="openEditDrawer(item)">
+                  <VListItem v-if="$can('update', 'Policy')" @click="openEditDrawer(item)">
                     <template #prepend><VIcon icon="tabler-pencil" color="warning" /></template>
                     <VListItemTitle>تعديل الوثيقة</VListItemTitle>
                   </VListItem>
-                  <VListItem @click="deletePolicy(item.id)">
+                  <VListItem v-if="$can('delete', 'Policy')" @click="deletePolicy(item.id)">
                     <template #prepend><VIcon icon="tabler-trash" /></template>
                     <VListItemTitle>حذف</VListItemTitle>
                   </VListItem>
