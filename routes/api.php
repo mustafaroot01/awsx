@@ -39,6 +39,7 @@ Route::get('/apps/branches/roi-analysis', [BranchController::class, 'roiAnalysis
 Route::apiResource('apps/branches', BranchController::class);
 
 // Production Plans
+Route::get('/apps/production-plans/breakthroughs', [ProductionPlanController::class, 'breakthroughs']);
 Route::post('/apps/production-plans/{productionPlan}/lock', [ProductionPlanController::class, 'lock']);
 Route::get('/apps/production-plans/{productionPlan}/achievements', [ProductionPlanController::class, 'achievements']);
 Route::apiResource('apps/production-plans', ProductionPlanController::class);
@@ -47,6 +48,7 @@ Route::apiResource('apps/production-plans', ProductionPlanController::class);
 Route::get('/apps/policies/stats', [PolicyController::class, 'stats']);
 Route::get('/apps/policies/expiring-soon', [PolicyController::class, 'expiringSoon']);
 Route::get('/apps/policies/kpis', [PolicyController::class, 'kpis']);
+Route::get('/apps/policies/{policy}/download-pdf', [PolicyController::class, 'downloadPdf']);
 Route::apiResource('apps/policies', PolicyController::class);
 
 // Evaluation Periods + nested Evaluations

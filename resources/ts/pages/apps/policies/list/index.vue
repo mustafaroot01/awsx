@@ -6,6 +6,8 @@ definePage({
   meta: { action: 'read', subject: 'Auth' },
 })
 
+const router = useRouter()
+
 const searchQuery = ref('')
 const selectedCategory = ref<string | undefined>(undefined)
 const selectedBranchId = ref<number | undefined>(undefined)
@@ -70,11 +72,8 @@ onMounted(async () => {
   branchOptions.value = (result?.branches ?? []).map((b: any) => ({ title: b.name, value: b.id }))
 })
 
-const isDrawerOpen = ref(false)
-const selectedPolicy = ref<Policy | null>(null)
-
-const openAddDrawer = () => { selectedPolicy.value = null; isDrawerOpen.value = true }
-const openEditDrawer = (p: Policy) => { selectedPolicy.value = p; isDrawerOpen.value = true }
+const openAddDrawer  = () => { router.push('/apps/policies/add') }
+const openEditDrawer = (p: Policy) => { router.push(`/apps/policies/add?id=${p.id}`) }
 
 const savePolicy = async (policyData: any) => {
   if (policyData.id) {
@@ -88,6 +87,12 @@ const savePolicy = async (policyData: any) => {
 const deletePolicy = async (id: number) => {
   await $api(`/apps/policies/${id}`, { method: 'DELETE' })
   fetchPolicies()
+}
+
+const downloadPdf = (policy: Policy) => {
+  // Direct link to the PDF download route
+  const url = `/api/apps/policies/${policy.id}/download-pdf`
+  window.open(url, '_blank')
 }
 
 const formatCurrency = (v: number) =>
@@ -249,21 +254,34 @@ const widgetData = computed(() => [
         </template>
 
         <template #item.actions="{ item }">
-          <VBtn icon variant="text" color="medium-emphasis">
-            <VIcon icon="tabler-dots-vertical" />
-            <VMenu activator="parent">
-              <VList>
-                <VListItem @click="openEditDrawer(item)">
-                  <template #prepend><VIcon icon="tabler-pencil" /></template>
-                  <VListItemTitle>تعديل</VListItemTitle>
-                </VListItem>
-                <VListItem @click="deletePolicy(item.id)">
-                  <template #prepend><VIcon icon="tabler-trash" /></template>
-                  <VListItemTitle>حذف</VListItemTitle>
-                </VListItem>
-              </VList>
-            </VMenu>
-          </VBtn>
+          <div class="d-flex align-center gap-1">
+            <VBtn
+              icon
+              variant="text"
+              color="primary"
+              size="small"
+              @click="downloadPdf(item)"
+            >
+              <VIcon icon="tabler-printer" size="22" />
+              <VTooltip activator="parent">طباعة الوثيقة</VTooltip>
+            </VBtn>
+
+            <VBtn icon variant="text" color="medium-emphasis" size="small">
+              <VIcon icon="tabler-dots-vertical" />
+              <VMenu activator="parent">
+                <VList>
+                  <VListItem @click="openEditDrawer(item)">
+                    <template #prepend><VIcon icon="tabler-pencil" color="warning" /></template>
+                    <VListItemTitle>تعديل الوثيقة</VListItemTitle>
+                  </VListItem>
+                  <VListItem @click="deletePolicy(item.id)">
+                    <template #prepend><VIcon icon="tabler-trash" /></template>
+                    <VListItemTitle>حذف</VListItemTitle>
+                  </VListItem>
+                </VList>
+              </VMenu>
+            </VBtn>
+          </div>
         </template>
 
         <template #bottom>

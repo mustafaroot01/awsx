@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import AddProductionPlanDrawer from '@/views/apps/production-plans/list/AddProductionPlanDrawer.vue'
+import { useRouter } from 'vue-router'
 import type { ProductionPlan } from '@db/apps/production-plans/types'
+
+const router = useRouter()
 
 definePage({
   meta: { action: 'read', subject: 'Auth' },
@@ -15,7 +17,6 @@ const { data: plansData, execute: fetchPlans } = await useApi<any>(createUrl('/a
 const plans = computed((): ProductionPlan[] => plansData.value?.plans ?? [])
 const totalPlans = computed(() => plansData.value?.totalPlans ?? 0)
 
-const isDrawerOpen = ref(false)
 const selectedPlan = ref<ProductionPlan | null>(null)
 const isAchievementsDialogOpen = ref(false)
 const achievements = ref<any[]>([])
@@ -33,24 +34,10 @@ const yearOptions = Array.from({ length: 6 }, (_, i) => {
   return { title: String(y), value: y }
 })
 
-const openAddDrawer = () => {
-  selectedPlan.value = null
-  isDrawerOpen.value = true
-}
+const openAddPage = () => router.push('/apps/production-plans/add')
 
-const openEditDrawer = (plan: ProductionPlan) => {
-  selectedPlan.value = plan
-  isDrawerOpen.value = true
-}
-
-const savePlan = async (planData: any) => {
-  if (planData.id) {
-    await $api(`/apps/production-plans/${planData.id}`, { method: 'PUT', body: planData })
-  } else {
-    await $api('/apps/production-plans', { method: 'POST', body: planData })
-  }
-  fetchPlans()
-}
+const openEditPage = (plan: ProductionPlan) =>
+  router.push({ path: '/apps/production-plans/add', query: { id: plan.id } })
 
 const deletePlan = async (id: number) => {
   await $api(`/apps/production-plans/${id}`, { method: 'DELETE' })
@@ -96,14 +83,16 @@ const viewPlanTargets = (plan: ProductionPlan) => {
       grouped[bt.branchId] = {
         branchId: bt.branchId,
         branchName: bt.branchName || `فرع ${bt.branchId}`,
-        life: 0,
-        group_health: 0,
-        general_property: 0,
-        total: 0,
+        life: 0, life_achieved: 0,
+        group_health: 0, group_health_achieved: 0,
+        general_property: 0, general_property_achieved: 0,
+        total: 0, total_achieved: 0,
       }
     }
     grouped[bt.branchId][bt.category] = bt.targetAmount
+    grouped[bt.branchId][`${bt.category}_achieved`] = bt.achievedAmount ?? 0
     grouped[bt.branchId].total += bt.targetAmount
+    grouped[bt.branchId].total_achieved += bt.achievedAmount ?? 0
   })
   
   previewTargets.value = Object.values(grouped)
@@ -155,7 +144,7 @@ const viewPlanTargets = (plan: ProductionPlan) => {
       <VDivider />
 
       <VCardText class="d-flex flex-wrap justify-end gap-4">
-        <VBtn prepend-icon="tabler-plus" @click="openAddDrawer">إضافة خطة</VBtn>
+        <VBtn prepend-icon="tabler-plus" @click="openAddPage">إضافة خطة</VBtn>
       </VCardText>
 
       <VDivider />
@@ -203,6 +192,10 @@ const viewPlanTargets = (plan: ProductionPlan) => {
             <VIcon icon="tabler-dots-vertical" />
             <VMenu activator="parent">
               <VList>
+                <VListItem @click="router.push(`/apps/production-plans/${item.id}`)">
+                  <template #prepend><VIcon icon="tabler-file-description" color="primary" /></template>
+                  <VListItemTitle>عرض تفاصيل الخطة</VListItemTitle>
+                </VListItem>
                 <VListItem @click="viewPlanTargets(item)">
                   <template #prepend><VIcon icon="tabler-eye" color="info" /></template>
                   <VListItemTitle>معاينة توزيع الأهداف</VListItemTitle>
@@ -211,7 +204,7 @@ const viewPlanTargets = (plan: ProductionPlan) => {
                   <template #prepend><VIcon icon="tabler-chart-bar" /></template>
                   <VListItemTitle>عرض الإنجازات</VListItemTitle>
                 </VListItem>
-                <VListItem v-if="!item.isLocked" @click="openEditDrawer(item)">
+                <VListItem v-if="!item.isLocked" @click="openEditPage(item)">
                   <template #prepend><VIcon icon="tabler-pencil" /></template>
                   <VListItemTitle>تعديل</VListItemTitle>
                 </VListItem>
@@ -244,37 +237,102 @@ const viewPlanTargets = (plan: ProductionPlan) => {
         </VCardTitle>
         <VDivider />
         <VCardText class="pa-0">
-          <VTable density="compact" class="text-no-wrap">
+          <VTable density="comfortable" class="text-no-wrap">
             <thead>
               <tr class="bg-var-theme-background">
-                <th class="font-weight-bold">الفرع</th>
-                <th class="text-center font-weight-bold">تأمين الحياة</th>
-                <th class="text-center font-weight-bold">الصحي الجماعي</th>
-                <th class="text-center font-weight-bold">الممتلكات العامة</th>
-                <th class="text-center font-weight-bold text-primary">إجمالي المستهدف</th>
+                <th class="font-weight-bold" style="min-width:140px">الفرع</th>
+                <th class="text-center font-weight-bold text-success" style="min-width:180px">تأمين الحياة</th>
+                <th class="text-center font-weight-bold text-info" style="min-width:180px">الصحي الجماعي</th>
+                <th class="text-center font-weight-bold text-warning" style="min-width:180px">الممتلكات العامة</th>
+                <th class="text-center font-weight-bold text-primary" style="min-width:180px">الإجمالي</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="row in previewTargets" :key="row.branchId">
-                <td class="font-weight-bold">{{ row.branchName }}</td>
-                <td class="text-center">{{ formatCurrency(row.life) }}</td>
-                <td class="text-center">{{ formatCurrency(row.group_health) }}</td>
-                <td class="text-center">{{ formatCurrency(row.general_property) }}</td>
-                <td class="text-center font-weight-black text-primary bg-light-primary">
-                  {{ formatCurrency(row.total) }}
+                <td class="font-weight-bold py-3">{{ row.branchName }}</td>
+
+                <!-- Life -->
+                <td class="py-2 px-3">
+                  <div class="text-caption text-medium-emphasis">المستهدف: {{ formatCurrency(row.life) }}</div>
+                  <div class="text-caption text-success font-weight-medium">المنجز: {{ formatCurrency(row.life_achieved) }}</div>
+                  <VProgressLinear
+                    :model-value="row.life > 0 ? Math.min((row.life_achieved / row.life) * 100, 100) : 0"
+                    :color="row.life_achieved >= row.life ? 'success' : row.life_achieved / row.life >= 0.7 ? 'warning' : 'error'"
+                    rounded height="6" class="my-1"
+                  />
+                  <div class="text-caption font-weight-bold">
+                    {{ row.life > 0 ? ((row.life_achieved / row.life) * 100).toFixed(1) : 0 }}%
+                  </div>
+                </td>
+
+                <!-- Group Health -->
+                <td class="py-2 px-3">
+                  <div class="text-caption text-medium-emphasis">المستهدف: {{ formatCurrency(row.group_health) }}</div>
+                  <div class="text-caption text-success font-weight-medium">المنجز: {{ formatCurrency(row.group_health_achieved) }}</div>
+                  <VProgressLinear
+                    :model-value="row.group_health > 0 ? Math.min((row.group_health_achieved / row.group_health) * 100, 100) : 0"
+                    :color="row.group_health_achieved >= row.group_health ? 'success' : row.group_health_achieved / row.group_health >= 0.7 ? 'warning' : 'error'"
+                    rounded height="6" class="my-1"
+                  />
+                  <div class="text-caption font-weight-bold">
+                    {{ row.group_health > 0 ? ((row.group_health_achieved / row.group_health) * 100).toFixed(1) : 0 }}%
+                  </div>
+                </td>
+
+                <!-- General Property -->
+                <td class="py-2 px-3">
+                  <div class="text-caption text-medium-emphasis">المستهدف: {{ formatCurrency(row.general_property) }}</div>
+                  <div class="text-caption text-success font-weight-medium">المنجز: {{ formatCurrency(row.general_property_achieved) }}</div>
+                  <VProgressLinear
+                    :model-value="row.general_property > 0 ? Math.min((row.general_property_achieved / row.general_property) * 100, 100) : 0"
+                    :color="row.general_property_achieved >= row.general_property ? 'success' : row.general_property_achieved / row.general_property >= 0.7 ? 'warning' : 'error'"
+                    rounded height="6" class="my-1"
+                  />
+                  <div class="text-caption font-weight-bold">
+                    {{ row.general_property > 0 ? ((row.general_property_achieved / row.general_property) * 100).toFixed(1) : 0 }}%
+                  </div>
+                </td>
+
+                <!-- Total -->
+                <td class="py-2 px-3 bg-light-primary">
+                  <div class="text-caption text-medium-emphasis">المستهدف: {{ formatCurrency(row.total) }}</div>
+                  <div class="text-caption text-success font-weight-medium">المنجز: {{ formatCurrency(row.total_achieved) }}</div>
+                  <VProgressLinear
+                    :model-value="row.total > 0 ? Math.min((row.total_achieved / row.total) * 100, 100) : 0"
+                    :color="row.total_achieved >= row.total ? 'success' : row.total_achieved / row.total >= 0.7 ? 'warning' : 'error'"
+                    rounded height="6" class="my-1"
+                  />
+                  <div class="text-caption font-weight-black text-primary">
+                    {{ row.total > 0 ? ((row.total_achieved / row.total) * 100).toFixed(1) : 0 }}%
+                  </div>
                 </td>
               </tr>
             </tbody>
+
+            <!-- Totals Footer -->
             <tfoot v-if="previewTargets.length > 0">
               <tr class="bg-var-theme-background">
-                <td class="font-weight-black">المجموع الكلي</td>
-                <td class="text-center font-weight-black">{{ formatCurrency(previewTargets.reduce((a, b) => a + b.life, 0)) }}</td>
-                <td class="text-center font-weight-black">{{ formatCurrency(previewTargets.reduce((a, b) => a + b.group_health, 0)) }}</td>
-                <td class="text-center font-weight-black">{{ formatCurrency(previewTargets.reduce((a, b) => a + b.general_property, 0)) }}</td>
-                <td class="text-center font-weight-black text-primary">{{ formatCurrency(previewTargets.reduce((a, b) => a + b.total, 0)) }}</td>
+                <td class="font-weight-black py-3">المجموع الكلي</td>
+                <td class="py-2 px-3">
+                  <div class="text-caption">{{ formatCurrency(previewTargets.reduce((a, b) => a + b.life, 0)) }}</div>
+                  <div class="text-caption text-success">{{ formatCurrency(previewTargets.reduce((a, b) => a + b.life_achieved, 0)) }}</div>
+                </td>
+                <td class="py-2 px-3">
+                  <div class="text-caption">{{ formatCurrency(previewTargets.reduce((a, b) => a + b.group_health, 0)) }}</div>
+                  <div class="text-caption text-success">{{ formatCurrency(previewTargets.reduce((a, b) => a + b.group_health_achieved, 0)) }}</div>
+                </td>
+                <td class="py-2 px-3">
+                  <div class="text-caption">{{ formatCurrency(previewTargets.reduce((a, b) => a + b.general_property, 0)) }}</div>
+                  <div class="text-caption text-success">{{ formatCurrency(previewTargets.reduce((a, b) => a + b.general_property_achieved, 0)) }}</div>
+                </td>
+                <td class="py-2 px-3 bg-light-primary">
+                  <div class="text-caption font-weight-black">{{ formatCurrency(previewTargets.reduce((a, b) => a + b.total, 0)) }}</div>
+                  <div class="text-caption text-success font-weight-black">{{ formatCurrency(previewTargets.reduce((a, b) => a + b.total_achieved, 0)) }}</div>
+                </td>
               </tr>
             </tfoot>
           </VTable>
+
           <div v-if="previewTargets.length === 0" class="text-center py-10 text-medium-emphasis">
             لا توجد مستهدفات موزعة لهذه الخطة
           </div>
@@ -336,11 +394,5 @@ const viewPlanTargets = (plan: ProductionPlan) => {
       </VCard>
     </VDialog>
 
-    <!-- Drawer -->
-    <AddProductionPlanDrawer
-      v-model:is-drawer-open="isDrawerOpen"
-      :plan-to-edit="selectedPlan"
-      @plan-data="savePlan"
-    />
   </section>
 </template>

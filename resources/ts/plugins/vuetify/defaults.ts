@@ -21,6 +21,10 @@ export default {
   VBtn: {
     // set v-btn default color to primary
     color: 'primary',
+    elevation: 0,
+  },
+  VCard: {
+    elevation: 0,
   },
   VChip: {
     label: true,
@@ -132,7 +136,7 @@ export default {
     hideDetails: 'auto',
     thumbSize: 22,
     trackSize: 6,
-    elevation: 4,
+    elevation: 0,
   },
   VTextField: {
     variant: 'outlined',

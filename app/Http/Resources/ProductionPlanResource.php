@@ -23,12 +23,14 @@ class ProductionPlanResource extends JsonResource
         ]);
 
         $branchTargets = $this->branchTargets->map(fn($bt) => [
-            'id'           => $bt->id,
-            'branchId'     => $bt->branch_id,
-            'branchName'   => $bt->branch?->name,
-            'category'     => $bt->category,
-            'categoryLabel'=> $categoryLabels[$bt->category] ?? $bt->category,
-            'targetAmount' => (float) $bt->target_amount,
+            'id'                    => $bt->id,
+            'branchId'              => $bt->branch_id,
+            'branchName'            => $bt->branch?->name,
+            'category'              => $bt->category,
+            'categoryLabel'         => $categoryLabels[$bt->category] ?? $bt->category,
+            'targetAmount'          => (float) $bt->target_amount,
+            'achievedAmount'        => (float) $bt->achieved_amount,
+            'achievementPercentage' => $bt->achievement_percentage,
         ]);
 
         return [

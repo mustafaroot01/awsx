@@ -134,50 +134,111 @@ class ProductionPlanController extends Controller
         return response()->json($data);
     }
 
+    public function breakthroughs(Request $request): JsonResponse
+    {
+        $year = $request->get('year', now()->year);
+
+        $plans = ProductionPlan::with(['branchTargets.branch'])
+            ->where('year', $year)
+            ->get();
+
+        $result = [];
+
+        foreach ($plans as $plan) {
+            $allAchievements = $this->calculateAchievements($plan->id);
+
+            foreach ($allAchievements as $branchData) {
+                foreach ($branchData['categories'] as $catKey => $catData) {
+                    if ($catData['target'] > 0 && $catData['percentage'] >= 100) {
+                        $result[] = [
+                            'planId'       => $plan->id,
+                            'planTitle'    => $plan->title,
+                            'year'         => $plan->year,
+                            'branchId'     => $branchData['branchId'],
+                            'branchName'   => $branchData['branchName'],
+                            'category'     => $catKey,
+                            'target'       => $catData['target'],
+                            'achieved'     => $catData['achieved'],
+                            'percentage'   => $catData['percentage'],
+                            'surplus'      => $catData['achieved'] - $catData['target'],
+                        ];
+                    }
+                }
+            }
+        }
+
+        return response()->json([
+            'breakthroughs' => $result,
+            'total'         => count($result),
+            'year'          => $year,
+        ]);
+    }
+
     private function calculateAchievements(int $planId): array
     {
         $plan = ProductionPlan::with(['branchTargets.branch'])->find($planId);
         if (!$plan) return [];
 
-        $planCategories = ['life', 'group_health', 'general_property'];
-        $categoryMap    = Policy::PLAN_CATEGORY_MAP;
-        $result         = [];
+        $planCategories  = ['life', 'group_health', 'general_property'];
+        $policyCategories = ['life', 'group_health', 'vehicle', 'fire_theft', 'transport_marine', 'engineering', 'personal_accident', 'cash'];
+        $categoryMap     = Policy::PLAN_CATEGORY_MAP;
+        $result          = [];
 
         foreach ($plan->branchTargets->groupBy('branch_id') as $branchId => $targets) {
-            // Filter: If user is branch manager, skip other branches
             if (auth()->check() && auth()->user()->branch_id && auth()->user()->branch_id != $branchId) {
                 continue;
             }
 
             $branchName = $targets->first()->branch?->name ?? 'غير محدد';
-            $row        = ['branchId' => $branchId, 'branchName' => $branchName, 'categories' => []];
 
-            // Aggregate achieved amount from all 8 policy categories into 3 plan groups
-            $achieved = Policy::where('branch_id', $branchId)
+            // Fetch achieved amounts for all 8 policy categories
+            $rawAchieved = Policy::where('branch_id', $branchId)
                 ->whereYear('issue_date', $plan->year)
-                ->select('category', DB::raw('SUM(amount) as total'))
+                ->where(function ($q) { $q->where('status', 'active')->orWhere('status', 'acceptance'); })
+                ->select('category', DB::raw('SUM(amount) as total'), DB::raw('COUNT(*) as count'))
                 ->groupBy('category')
-                ->pluck('total', 'category')
-                ->toArray();
+                ->get()
+                ->keyBy('category');
 
-            // Map individual categories to plan groups
-            $achievedByGroup = ['life' => 0.0, 'group_health' => 0.0, 'general_property' => 0.0];
-            foreach ($achieved as $policyCat => $total) {
-                $group = $categoryMap[$policyCat] ?? 'general_property';
-                $achievedByGroup[$group] += (float) $total;
-            }
-
-            foreach ($planCategories as $planCat) {
-                $target = (float) $targets->where('category', $planCat)->sum('target_amount');
-
-                $row['categories'][$planCat] = [
-                    'target'     => $target,
-                    'achieved'   => $achievedByGroup[$planCat],
-                    'percentage' => $target > 0 ? round(($achievedByGroup[$planCat] / $target) * 100, 1) : 0,
+            // Build per-policy-category detail
+            $subCategories = [];
+            foreach ($policyCategories as $polCat) {
+                $subCategories[$polCat] = [
+                    'achieved' => (float) ($rawAchieved[$polCat]->total ?? 0),
+                    'count'    => (int)   ($rawAchieved[$polCat]->count ?? 0),
+                    'group'    => $categoryMap[$polCat] ?? 'general_property',
                 ];
             }
 
-            $result[] = $row;
+            // Aggregate into 3 plan groups
+            $achievedByGroup = ['life' => 0.0, 'group_health' => 0.0, 'general_property' => 0.0];
+            foreach ($subCategories as $polCat => $data) {
+                $achievedByGroup[$data['group']] += $data['achieved'];
+            }
+
+            // Build group-level rows with sub-category breakdown
+            $categories = [];
+            foreach ($planCategories as $planCat) {
+                $target = (float) $targets->where('category', $planCat)->sum('target_amount');
+                $achieved = $achievedByGroup[$planCat];
+
+                $categories[$planCat] = [
+                    'target'     => $target,
+                    'achieved'   => $achieved,
+                    'percentage' => $target > 0 ? round(($achieved / $target) * 100, 1) : 0,
+                    'breakdown'  => collect($subCategories)
+                        ->filter(fn($d) => $d['group'] === $planCat)
+                        ->map(fn($d, $k) => ['key' => $k, 'achieved' => $d['achieved'], 'count' => $d['count']])
+                        ->values()
+                        ->toArray(),
+                ];
+            }
+
+            $result[] = [
+                'branchId'   => $branchId,
+                'branchName' => $branchName,
+                'categories' => $categories,
+            ];
         }
 
         return $result;

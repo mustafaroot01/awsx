@@ -60,6 +60,36 @@ const monthlyChartConfig = computed(() => ({
   }
 }))
 
+// 👉 Plan Breakthroughs
+const { data: breakthroughData, execute: fetchBreakthroughs } = await useApi<any>(
+  createUrl('/apps/production-plans/breakthroughs', { query: { year: selectedYear } })
+)
+watch(selectedYear, fetchBreakthroughs)
+
+const breakthroughs = computed(() => breakthroughData.value?.breakthroughs ?? [])
+
+const categoryLabels: Record<string, string> = {
+  life:             'تأمين الحياة',
+  group_health:     'الصحي الجماعي',
+  general_property: 'الممتلكات العامة',
+}
+
+const breakthroughsByBranch = computed(() => {
+  const grouped: Record<number, { branchId: number; branchName: string; items: any[] }> = {}
+  for (const bt of breakthroughs.value) {
+    if (!grouped[bt.branchId]) {
+      grouped[bt.branchId] = { branchId: bt.branchId, branchName: bt.branchName, items: [] }
+    }
+    grouped[bt.branchId].items.push(bt)
+  }
+  return Object.values(grouped)
+})
+
+const showAllBranches = ref(false)
+const visibleBranches = computed(() =>
+  showAllBranches.value ? breakthroughsByBranch.value : breakthroughsByBranch.value.slice(0, 4)
+)
+
 const categoryChartConfig = computed(() => {
   const data = stats.value?.stats ?? {}
   const labels = Object.keys(data).map(k => getCategoryName(k))
@@ -79,6 +109,96 @@ const categoryChartConfig = computed(() => {
 
 <template>
   <VRow>
+
+    <!-- 🏆 عبور الخطة -->
+    <VCol cols="12" v-if="breakthroughs.length > 0">
+      <VCard>
+        <VCardItem>
+          <template #prepend>
+            <VAvatar color="success" variant="tonal" size="42">
+              <VIcon icon="tabler-trophy" size="24" />
+            </VAvatar>
+          </template>
+          <VCardTitle>عبور الخطة الإنتاجية — {{ selectedYear }}</VCardTitle>
+          <VCardSubtitle>الفروع التي تجاوزت الهدف المخطط لها</VCardSubtitle>
+          <template #append>
+            <VChip color="success" variant="tonal" class="me-2">{{ breakthroughsByBranch.length }} فرع</VChip>
+            <VChip color="primary" variant="tonal">{{ breakthroughs.length }} فئة</VChip>
+          </template>
+        </VCardItem>
+
+        <VDivider />
+
+        <VCardText>
+          <VRow>
+            <VCol
+              v-for="branch in visibleBranches"
+              :key="branch.branchId"
+              cols="12" md="6" lg="3"
+            >
+              <VCard variant="tonal" color="success">
+                <VCardItem class="pb-2">
+                  <template #prepend>
+                    <VAvatar color="success" variant="elevated" size="36">
+                      <VIcon icon="tabler-building" size="20" />
+                    </VAvatar>
+                  </template>
+                  <VCardTitle class="text-body-1">{{ branch.branchName }}</VCardTitle>
+                  <VCardSubtitle>{{ branch.items.length }} فئة متجاوزة</VCardSubtitle>
+                </VCardItem>
+
+                <VCardText class="pt-0">
+                  <div
+                    v-for="item in branch.items"
+                    :key="item.category"
+                    class="mb-3"
+                  >
+                    <div class="d-flex align-center justify-space-between mb-1">
+                      <span class="text-caption font-weight-medium">{{ categoryLabels[item.category] ?? item.category }}</span>
+                      <VChip
+                        :color="item.percentage >= 150 ? 'error' : item.percentage >= 120 ? 'warning' : 'success'"
+                        size="x-small"
+                        variant="elevated"
+                      >
+                        {{ item.percentage }}%
+                      </VChip>
+                    </div>
+                    <VProgressLinear
+                      :model-value="Math.min(item.percentage, 200)"
+                      :color="item.percentage >= 150 ? 'error' : item.percentage >= 120 ? 'warning' : 'success'"
+                      height="6"
+                      rounded
+                      class="mb-1"
+                    />
+                    <div class="d-flex justify-space-between">
+                      <span class="text-caption text-medium-emphasis">الخطة: {{ formatCurrency(item.target) }}</span>
+                      <span class="text-caption font-weight-bold">{{ formatCurrency(item.achieved) }}</span>
+                    </div>
+                    <div class="text-caption text-medium-emphasis">
+                      فائض: +{{ formatCurrency(item.surplus) }}
+                    </div>
+                    <VDivider v-if="branch.items.indexOf(item) < branch.items.length - 1" class="mt-2" />
+                  </div>
+                </VCardText>
+              </VCard>
+            </VCol>
+          </VRow>
+
+          <div v-if="breakthroughsByBranch.length > 4" class="text-center mt-4">
+            <VBtn
+              variant="tonal"
+              color="success"
+              size="small"
+              :append-icon="showAllBranches ? 'tabler-chevron-up' : 'tabler-chevron-down'"
+              @click="showAllBranches = !showAllBranches"
+            >
+              {{ showAllBranches ? 'عرض أقل' : `عرض باقي الفروع (${breakthroughsByBranch.length - 4})` }}
+            </VBtn>
+          </div>
+        </VCardText>
+      </VCard>
+    </VCol>
+
     <VCol cols="12">
       <VCard class="mb-6">
         <VCardText>
@@ -202,3 +322,4 @@ const categoryChartConfig = computed(() => {
     </VCol>
   </VRow>
 </template>
+

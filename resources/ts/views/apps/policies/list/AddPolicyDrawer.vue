@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import type { Policy, PolicyCategory, LifePolicyDetails } from '@db/apps/policies/types'
 import type { VForm } from 'vuetify/components/VForm'
+import AMLDetails from '../AMLDetails.vue'
+import FireTheftDetails from '../FireTheftDetails.vue'
+import LifeDetails from '../LifeDetails.vue'
 
 interface Emit {
   (e: 'update:isDrawerOpen', value: boolean): void
@@ -18,25 +21,119 @@ const isEditMode = computed(() => !!props.policyToEdit)
 const isFormValid = ref(false)
 const refForm = ref<VForm>()
 
-const policyNo = ref('')
-const category = ref<PolicyCategory>('life')
-const clientName = ref('')
-const amount = ref<number>(0)
-const issueDate = ref('')
-const expiryDate = ref('')
-const branchId = ref<number | null>(null)
-const notes = ref('')
-
-// Life insurance specific
-const paymentCycle = ref('annual')
-const accidentFee = ref<number>(0)
-const durationYears = ref<number>(2)
-const idNumber = ref('')
-const birthDate = ref('')
-const phone = ref('')
-const address = ref('')
-const beneficiaryName = ref('')
-const beneficiaryRelation = ref('')
+const formData = ref({
+  policyNo: '',
+  category: 'life' as PolicyCategory,
+  status: 'active',
+  clientName: '',
+  trade_name: '',
+  permanent_address: '',
+  phone: '',
+  occupation: '',
+  district: '',
+  mahalla: '',
+  zuqaq: '',
+  dar: '',
+  shop_no: '',
+  street_region: '',
+  shop_phone: '',
+  amount: 0,
+  issueDate: '',
+  expiryDate: '',
+  branchId: null as number | null,
+  notes: '',
+  source_of_funds: [] as string[],
+  monthly_income: 'under_1m',
+  business_type: '',
+  aml_officer_name: '',
+  
+  // Life specific
+  lifeDetails: {
+    paymentCycle: 'annual',
+    accidentFee: 0,
+    durationYears: 2,
+    idNumber: '',
+    birthDate: '',
+    phone: '',
+    address: '',
+    marital_status: 'single',
+    id_card_no: '',
+    issue_authority_date: '',
+    spouse_name: '',
+    work_address: '',
+    home_address_detail: '',
+    height_cm: null,
+    weight_kg: null,
+    weight_change_last_year: '',
+    health_questionnaire: Array(7).fill(null),
+  },
+  beneficiaries: [] as any[],
+  
+  // Fire/Theft specific
+  fireTheftDetails: {
+    is_owner: true,
+    has_accounting_records: false,
+    jewelry_storage: '',
+    is_insured_amount_real: true,
+    closing_duration: '',
+    guarding_nature: '',
+    previous_incidents: '',
+    neighbors_incidents: '',
+    hazardous_materials: '',
+    previous_insurance_history: '',
+    peril_explosion: false,
+    peril_flood: false,
+    peril_storm: false,
+    peril_riot: false,
+    peril_tank_overflow: false,
+    peril_self_combustion: false,
+    peril_aircraft_impact: false,
+    peril_earthquake: false,
+  },
+  
+  inspection: {
+    construction_description: '',
+    wall_material: '',
+    roof_material: '',
+    floor_material: '',
+    neighbors_connectivity: false,
+    neighbors_nature: '',
+    doors_locks_type: '',
+    window_grids: false,
+    lighting_heating: '',
+    machine_fuel: '',
+    wood_layers: false,
+    water_source: '',
+    extinguishers: '',
+    electrical_state: '',
+    hazardous_observation: '',
+    waste_disposal: '',
+    sketch_path: '',
+  },
+  
+  companyDetails: {
+    authorized_name: '',
+    authorized_address: '',
+    founder_names: '',
+    manager_name: '',
+    board_chairman: '',
+    board_members: '',
+    shareholder_names: '',
+    activity_type: 'none',
+    founding_date: '',
+    capital: 0,
+    founding_place: '',
+    external_auditor_name: '',
+  },
+  
+  funds: {
+    building: { value: 0, description: '' },
+    goods: { value: 0, description: '' },
+    machinery: { value: 0, description: '' },
+    furniture: { value: 0, description: '' },
+    others: { value: 0, description: '' },
+  },
+})
 
 const branchOptions = ref<{ title: string; value: number }[]>([])
 
@@ -60,26 +157,27 @@ const paymentCycleOptions = [
 
 const isLifePolicy = computed(() => category.value === 'life')
 
-const fillForm = (p: Policy) => {
-  policyNo.value = p.policyNo
-  category.value = p.category
-  clientName.value = p.clientName
-  amount.value = p.amount
-  issueDate.value = p.issueDate
-  expiryDate.value = p.expiryDate
-  branchId.value = p.branchId
-  notes.value = p.notes ?? ''
-  if (p.lifeDetails) {
-    const ld = p.lifeDetails
-    paymentCycle.value = ld.paymentCycle
-    accidentFee.value = ld.accidentFee
-    durationYears.value = ld.durationYears
-    idNumber.value = ld.idNumber ?? ''
-    birthDate.value = ld.birthDate ?? ''
-    phone.value = ld.phone ?? ''
-    address.value = ld.address ?? ''
-    beneficiaryName.value = ld.beneficiaryName ?? ''
-    beneficiaryRelation.value = ld.beneficiaryRelation ?? ''
+const fillForm = (p: any) => {
+  formData.value.policyNo = p.policy_no
+  formData.value.category = p.category
+  formData.value.status = p.status
+  formData.value.clientName = p.client_name
+  formData.value.occupation = p.occupation
+  formData.value.mahalla = p.mahalla
+  formData.value.zuqaq = p.zuqaq
+  formData.value.dar = p.dar
+  formData.value.amount = p.amount
+  formData.value.issueDate = p.issue_date
+  formData.value.expiryDate = p.expiry_date
+  formData.value.branchId = p.branch_id
+  formData.value.notes = p.notes ?? ''
+  formData.value.source_of_funds = p.source_of_funds ?? ''
+  formData.value.monthly_income = p.monthly_income ?? 0
+  formData.value.business_type = p.business_type ?? ''
+  formData.value.aml_officer_name = p.aml_officer_name ?? ''
+  
+  if (p.life_details) {
+    formData.value.lifeDetails = { ...p.life_details }
   }
 }
 
@@ -97,10 +195,7 @@ const closeDrawer = () => {
   emit('update:isDrawerOpen', false)
   nextTick(() => {
     refForm.value?.reset()
-    branchId.value = null
-    issueDate.value = ''
-    expiryDate.value = ''
-    birthDate.value = ''
+    formData.value.branchId = null
   })
 }
 
@@ -108,33 +203,15 @@ const onSubmit = () => {
   refForm.value?.validate().then(({ valid }) => {
     if (!valid) return
 
-    const payload: any = {
-      id: props.policyToEdit?.id ?? 0,
-      policyNo: policyNo.value,
-      category: category.value,
-      clientName: clientName.value,
-      amount: amount.value,
-      issueDate: issueDate.value,
-      expiryDate: expiryDate.value,
-      branchId: branchId.value,
-      notes: notes.value || null,
+    // Clean up empty beneficiaries
+    const cleanBeneficiaries = formData.value.beneficiaries.filter(b => b.name_quad || b.name)
+    
+    const submissionData = {
+      ...formData.value,
+      beneficiaries: cleanBeneficiaries,
     }
 
-    if (isLifePolicy.value) {
-      payload.lifeDetails = {
-        paymentCycle: paymentCycle.value,
-        accidentFee: accidentFee.value,
-        durationYears: durationYears.value,
-        idNumber: idNumber.value || null,
-        birthDate: birthDate.value || null,
-        phone: phone.value || null,
-        address: address.value || null,
-        beneficiaryName: beneficiaryName.value || null,
-        beneficiaryRelation: beneficiaryRelation.value || null,
-      }
-    }
-
-    emit('policyData', payload)
+    emit('policyData', submissionData)
     closeDrawer()
   })
 }
@@ -145,7 +222,7 @@ const onSubmit = () => {
     :model-value="props.isDrawerOpen"
     temporary
     location="end"
-    width="550"
+    width="750"
     @update:model-value="emit('update:isDrawerOpen', $event)"
   >
     <AppDrawerHeaderSection
@@ -154,194 +231,118 @@ const onSubmit = () => {
     />
     <VDivider />
 
-    <VForm ref="refForm" v-model="isFormValid" class="pa-5" @submit.prevent="onSubmit">
-      <VRow>
-        <!-- رقم الوثيقة -->
-        <VCol cols="12" md="6">
-          <AppTextField
-            v-model="policyNo"
-            :rules="[requiredValidator]"
-            label="رقم الوثيقة"
-            placeholder="POL-2025-001"
-          />
-        </VCol>
-
-        <!-- الفئة -->
-        <VCol cols="12" md="6">
-          <AppSelect
-            v-model="category"
-            :rules="[requiredValidator]"
-            label="فئة التأمين"
-            :items="categoryOptions"
-          />
-        </VCol>
-
-        <!-- اسم العميل -->
-        <VCol cols="12">
-          <AppTextField
-            v-model="clientName"
-            :rules="[requiredValidator]"
-            label="اسم العميل"
-            placeholder="محمد أحمد"
-          />
-        </VCol>
-
-        <!-- المبلغ -->
-        <VCol cols="12" md="6">
-          <AppTextField
-            v-model="amount"
-            :rules="[requiredValidator]"
-            label="مبلغ الوثيقة (د.ع)"
-            type="number"
-            placeholder="5000000"
-          />
-        </VCol>
-
-        <!-- الفرع -->
-        <VCol cols="12" md="6">
-          <AppSelect
-            v-model="branchId"
-            label="الفرع"
-            :items="branchOptions"
-            clearable
-            clear-icon="tabler-x"
-          />
-        </VCol>
-
-        <!-- تاريخ الإصدار -->
-        <VCol cols="12" md="6">
-          <AppDateTimePicker
-            v-model="issueDate"
-            :rules="[requiredValidator]"
-            label="تاريخ الإصدار"
-            placeholder="YYYY-MM-DD"
-            :config="{ dateFormat: 'Y-m-d' }"
-          />
-        </VCol>
-
-        <!-- تاريخ الانتهاء -->
-        <VCol cols="12" md="6">
-          <AppDateTimePicker
-            v-model="expiryDate"
-            :rules="[requiredValidator]"
-            label="تاريخ الانتهاء"
-            placeholder="YYYY-MM-DD"
-            :config="{ dateFormat: 'Y-m-d' }"
-          />
-        </VCol>
-
-        <!-- ملاحظات -->
-        <VCol cols="12">
-          <AppTextField
-            v-model="notes"
-            label="ملاحظات (اختياري)"
-            placeholder="أي تفاصيل إضافية"
-          />
-        </VCol>
-
-        <!-- ══ تأمين الحياة - بيانات إضافية ══ -->
-        <template v-if="isLifePolicy">
-          <VCol cols="12">
-            <VDivider class="my-2" />
-            <div class="text-subtitle-2 font-weight-bold mb-3 text-primary">
-              <VIcon icon="tabler-heart-rate-monitor" class="me-1" size="18" />
-              بيانات تأمين الحياة
-            </div>
+    <div style="height: calc(100vh - 70px); overflow-y: auto;">
+      <VForm ref="refForm" v-model="isFormValid" class="pa-5" @submit.prevent="onSubmit">
+        <VRow>
+          <!-- رقم الوثيقة -->
+          <VCol cols="12" md="6">
+            <AppTextField
+              v-model="formData.policyNo"
+              :rules="[requiredValidator]"
+              label="رقم الوثيقة"
+              placeholder="POL-2025-001"
+            />
           </VCol>
 
-          <!-- دورية السداد -->
+          <!-- الفئة -->
           <VCol cols="12" md="6">
             <AppSelect
-              v-model="paymentCycle"
+              v-model="formData.category"
               :rules="[requiredValidator]"
-              label="دورية السداد"
-              :items="paymentCycleOptions"
+              label="فئة التأمين"
+              :items="categoryOptions"
             />
           </VCol>
 
-          <!-- مدة التأمين -->
-          <VCol cols="12" md="6">
-            <AppTextField
-              v-model="durationYears"
-              :rules="[requiredValidator, (v: number) => v >= 2 || 'الحد الأدنى سنتان']"
-              label="مدة التأمين (سنوات)"
-              type="number"
-              placeholder="2"
-            />
-          </VCol>
-
-          <!-- رسوم الحوادث -->
-          <VCol cols="12" md="6">
-            <AppTextField
-              v-model="accidentFee"
-              label="رسوم الحوادث الثابتة (د.ع)"
-              type="number"
-              placeholder="50000"
-            />
-          </VCol>
-
-          <!-- رقم الهوية -->
-          <VCol cols="12" md="6">
-            <AppTextField
-              v-model="idNumber"
-              label="رقم الهوية الوطنية"
-              placeholder="12345678"
-            />
-          </VCol>
-
-          <!-- تاريخ الميلاد -->
-          <VCol cols="12" md="6">
-            <AppDateTimePicker
-              v-model="birthDate"
-              label="تاريخ الميلاد"
-              placeholder="YYYY-MM-DD"
-              :config="{ dateFormat: 'Y-m-d', maxDate: 'today' }"
-            />
-          </VCol>
-
-          <!-- الهاتف -->
-          <VCol cols="12" md="6">
-            <AppTextField
-              v-model="phone"
-              label="رقم الهاتف"
-              placeholder="07X-XXX-XXXX"
-            />
-          </VCol>
-
-          <!-- العنوان -->
+          <!-- اسم العميل -->
           <VCol cols="12">
             <AppTextField
-              v-model="address"
-              label="العنوان"
-              placeholder="بغداد، الكرادة..."
+              v-model="formData.clientName"
+              :rules="[requiredValidator]"
+              label="اسم العميل"
+              placeholder="محمد أحمد"
             />
           </VCol>
 
-          <!-- المستفيد -->
+          <!-- المبلغ -->
           <VCol cols="12" md="6">
             <AppTextField
-              v-model="beneficiaryName"
-              label="اسم المستفيد"
-              placeholder="اسم المستفيد الكامل"
+              v-model="formData.amount"
+              :rules="[requiredValidator]"
+              label="مبلغ الوثيقة (د.ع)"
+              type="number"
+              placeholder="5000000"
             />
           </VCol>
 
-          <!-- صلة القرابة -->
+          <!-- الفرع -->
           <VCol cols="12" md="6">
-            <AppTextField
-              v-model="beneficiaryRelation"
-              label="صلة القرابة بالمستفيد"
-              placeholder="زوجة / ابن / ابنة"
+            <AppSelect
+              v-model="formData.branchId"
+              label="الفرع"
+              :items="branchOptions"
+              :rules="[requiredValidator]"
+              clearable
+              clear-icon="tabler-x"
             />
           </VCol>
-        </template>
 
-        <!-- أزرار -->
-        <VCol cols="12" class="d-flex gap-4">
-          <VBtn type="submit">{{ isEditMode ? 'تحديث' : 'حفظ' }}</VBtn>
-          <VBtn color="secondary" variant="tonal" @click="closeDrawer">إلغاء</VBtn>
-        </VCol>
-      </VRow>
-    </VForm>
+          <!-- تاريخ الإصدار -->
+          <VCol cols="12" md="6">
+            <AppDateTimePicker
+              v-model="formData.issueDate"
+              :rules="[requiredValidator]"
+              label="تاريخ الإصدار"
+              placeholder="YYYY-MM-DD"
+              :config="{ dateFormat: 'Y-m-d' }"
+            />
+          </VCol>
+
+          <!-- تاريخ الانتهاء -->
+          <VCol cols="12" md="6">
+            <AppDateTimePicker
+              v-model="formData.expiryDate"
+              :rules="[requiredValidator]"
+              label="تاريخ الانتهاء"
+              placeholder="YYYY-MM-DD"
+              :config="{ dateFormat: 'Y-m-d' }"
+            />
+          </VCol>
+
+          <!-- ملاحظات -->
+          <VCol cols="12">
+            <AppTextField
+              v-model="formData.notes"
+              label="ملاحظات (اختياري)"
+              placeholder="أي تفاصيل إضافية"
+            />
+          </VCol>
+
+          <!-- ══ تأمين الحياة - بيانات إضافية ══ -->
+          <VCol v-if="formData.category === 'life'" cols="12">
+            <VDivider class="my-4" />
+            <LifeDetails :form-data="formData" />
+          </VCol>
+
+          <!-- ══ تأمين الحريق والسرقة ══ -->
+          <VCol v-if="formData.category === 'fire_theft'" cols="12">
+            <VDivider class="my-4" />
+            <FireTheftDetails :form-data="formData" />
+          </VCol>
+
+          <!-- ══ AML ══ -->
+          <VCol cols="12">
+            <VDivider class="my-4" />
+            <AMLDetails :form-data="formData" />
+          </VCol>
+
+          <!-- أزرار -->
+          <VCol cols="12" class="d-flex gap-4">
+            <VBtn type="submit">{{ isEditMode ? 'تحديث' : 'حفظ' }}</VBtn>
+            <VBtn color="secondary" variant="tonal" @click="closeDrawer">إلغاء</VBtn>
+          </VCol>
+        </VRow>
+      </VForm>
+    </div>
   </VNavigationDrawer>
 </template>
