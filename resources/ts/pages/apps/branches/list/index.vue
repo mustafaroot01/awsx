@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import AddNewBranchDrawer from '@/views/apps/branches/list/AddNewBranchDrawer.vue'
 import type { Branch, BranchWithNames } from '@db/apps/branches/types'
+import { showPermissionError } from '@/utils/api'
 
 definePage({
   meta: {
@@ -96,8 +97,10 @@ const saveBranch = async (branchData: Branch) => {
     fetchBranches()
   } catch (err: any) {
     console.error('Branch Save Error:', err)
-    const errorDetail = err.response?._data?.message || err.message || 'خطأ غير معروف'
-    showNotification(`فشل الحفظ: ${errorDetail}`, 'error')
+    if (!showPermissionError(err)) {
+      const errorDetail = err.response?._data?.message || err.message || 'خطأ غير معروف'
+      showNotification(`فشل الحفظ: ${errorDetail}`, 'error')
+    }
   }
 }
 
@@ -110,7 +113,8 @@ const deleteBranch = async (id: number) => {
     showNotification('تم حذف الفرع بنجاح')
     fetchBranches()
   } catch (err) {
-    showNotification('فشل في حذف الفرع', 'error')
+    if (!showPermissionError(err))
+      showNotification('فشل في حذف الفرع', 'error')
   }
 }
 </script>

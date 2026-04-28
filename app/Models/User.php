@@ -6,6 +6,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use App\Models\Role;
 
 class User extends Authenticatable
 {
@@ -47,6 +48,23 @@ class User extends Authenticatable
             'password' => 'hashed',
             'branch_id' => 'integer',
         ];
+    }
+
+    /**
+     * Auto-assign الصلاحية الافتراضية to new users
+     */
+    protected static function boot(): void
+    {
+        parent::boot();
+
+        static::created(function (User $user) {
+            if ($user->roles()->count() === 0) {
+                $default = Role::where('name', 'الصلاحية الافتراضية')->first();
+                if ($default) {
+                    $user->roles()->attach($default->id);
+                }
+            }
+        });
     }
 
     /**

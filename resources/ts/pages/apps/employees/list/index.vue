@@ -2,6 +2,7 @@
 import AddNewEmployeeDrawer from '@/views/apps/employees/list/AddNewEmployeeDrawer.vue'
 import IncentiveCalculatorDialog from '@/views/apps/employees/list/IncentiveCalculatorDialog.vue'
 import type { Employee } from '@db/apps/employees/types'
+import { showPermissionError } from '@/utils/api'
 
 definePage({
   meta: {
@@ -159,7 +160,8 @@ const saveEmployee = async (employeeData: Employee) => {
     }
     fetchEmployees()
   } catch (error: any) {
-    showSnackbar('حدث خطأ أثناء الحفظ: ' + (error.message || ''), 'error')
+    if (!showPermissionError(error))
+      showSnackbar('حدث خطأ أثناء الحفظ: ' + (error.message || ''), 'error')
   }
 }
 
@@ -175,7 +177,8 @@ const deleteEmployee = async (id: number) => {
     showSnackbar('تم حذف الموظف بنجاح')
     fetchEmployees()
   } catch (error: any) {
-    showSnackbar('حدث خطأ أثناء الحذف', 'error')
+    if (!showPermissionError(error))
+      showSnackbar('حدث خطأ أثناء الحذف', 'error')
   }
 }
 </script>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import AddNewUserDrawer from '@/views/apps/user/list/AddNewUserDrawer.vue'
+import { showPermissionError } from '@/utils/api'
 
 definePage({
   meta: { action: 'read', subject: 'User' },
@@ -88,7 +89,8 @@ const addNewUser = async (userData: any) => {
     }
     fetchUsers()
   } catch (e) {
-    showMessage('فشلت العملية، يرجى المحاولة مرة أخرى', 'error')
+    if (!showPermissionError(e))
+      showMessage('فشلت العملية، يرجى المحاولة مرة أخرى', 'error')
   }
 }
 
@@ -112,7 +114,8 @@ const deleteUser = async () => {
     showMessage('تم حذف المستخدم بنجاح', 'success')
     fetchUsers()
   } catch (e) {
-    showMessage('حدث خطأ أثناء محاولة الحذف', 'error')
+    if (!showPermissionError(e))
+      showMessage('حدث خطأ أثناء محاولة الحذف', 'error')
   } finally {
     isConfirmDeleteDialogOpen.value = false
     userToDeleteId.value = null

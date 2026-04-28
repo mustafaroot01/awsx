@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
+import { showPermissionError } from '@/utils/api'
 
 interface Role {
   id: number
@@ -86,12 +87,23 @@ const givenPermissions = computed(() => {
   )
 })
 
+const PROTECTED_ROLES = ['إدارة النظام', 'الصلاحية الافتراضية']
+const LOCKED_PERMISSION_SLUG = 'read.Auth'
+
+const lockedPermIds = computed(() => {
+  if (roleDetail.value?.name === 'الصلاحية الافتراضية') {
+    return allPermissions.value.filter(p => p.slug === LOCKED_PERMISSION_SLUG).map(p => p.id)
+  }
+  return []
+})
+
 const movePermission = (id: number, direction: 'give' | 'take') => {
   if (direction === 'give') {
     if (!selectedPermissions.value.includes(id)) {
       selectedPermissions.value.push(id)
     }
   } else {
+    if (lockedPermIds.value.includes(id)) return
     selectedPermissions.value = selectedPermissions.value.filter(pId => pId !== id)
   }
 }
@@ -106,7 +118,7 @@ const giveAll = () => {
 }
 
 const takeAll = () => {
-  selectedPermissions.value = []
+  selectedPermissions.value = [...lockedPermIds.value]
 }
 
 const editRole = async (item: Role) => {
@@ -146,7 +158,8 @@ const onSubmit = async () => {
     showNotification('تم حفظ التغييرات بنجاح')
     fetchRoles()
   } catch (err) { 
-    showNotification('خطأ أثناء الحفظ', 'error')
+    if (!showPermissionError(err))
+      showNotification('خطأ أثناء الحفظ', 'error')
   }
 }
 
@@ -163,8 +176,10 @@ const deleteRole = async () => {
     showNotification('تم حذف المجموعة بنجاح')
     fetchRoles()
   } catch (err: any) {
-    const msg = err.response?._data?.message || 'حدث خطأ أثناء الحذف'
-    showNotification(msg, 'error')
+    if (!showPermissionError(err)) {
+      const msg = err.response?._data?.message || 'حدث خطأ أثناء الحذف'
+      showNotification(msg, 'error')
+    }
     isConfirmDialogVisible.value = false
   }
 }
@@ -202,7 +217,14 @@ const deleteRole = async () => {
           <h4 class="text-h4 text-center mb-2">{{ roleDetail?.id ? 'تعديل المجموعة' : 'إضافة مجموعة جديدة' }}</h4>
           <p class="text-body-1 text-center mb-8">إدارة الصلاحيات والوصول للنظام</p>
 
-          <VTextField v-model="roleName" label="اسم المجموعة" placeholder="مثال: الموارد البشرية" variant="outlined" class="mb-8" />
+          <VTextField
+            v-model="roleName"
+            label="اسم المجموعة"
+            placeholder="مثال: الموارد البشرية"
+            variant="outlined"
+            class="mb-8"
+            :readonly="roleDetail?.name === 'الصلاحية الافتراضية'"
+          />
 
           <VRow>
             <VCol cols="12" md="5">
@@ -291,7 +313,9 @@ const deleteRole = async () => {
           <VCardText class="d-flex align-center pb-4">
             <div class="text-body-1 font-weight-medium text-muted">إجمالي {{ item.users_count }} مستخدمين</div>
             <VSpacer />
-            <IconBtn v-if="$can('delete', 'Role')" color="error" variant="text" size="small" @click="confirmDelete(item)" title="حذف المجموعة">
+            <VChip v-if="item.name === 'إدارة النظام'" size="x-small" color="error" label prepend-icon="tabler-lock">محمي</VChip>
+            <VChip v-else-if="item.name === 'الصلاحية الافتراضية'" size="x-small" color="info" label prepend-icon="tabler-star">افتراضي</VChip>
+            <IconBtn v-else-if="$can('delete', 'Role')" color="error" variant="text" size="small" @click="confirmDelete(item)" title="حذف المجموعة">
               <VIcon icon="tabler-trash" size="20" />
             </IconBtn>
           </VCardText>
@@ -300,10 +324,16 @@ const deleteRole = async () => {
             <div class="d-flex justify-space-between align-end">
               <div>
                 <h5 class="text-h5 mb-1">{{ item.name }}</h5>
-                <a v-if="$can('update', 'Role')" href="javascript:void(0)" class="text-primary font-weight-bold text-sm" @click="editRole(item)">تعديل الصلاحيات</a>
+                <a
+                  v-if="$can('update', 'Role') && item.name !== 'إدارة النظام'"
+                  href="javascript:void(0)"
+                  class="text-primary font-weight-bold text-sm"
+                  @click="editRole(item)"
+                >تعديل الصلاحيات</a>
+                <span v-else-if="item.name === 'إدارة النظام'" class="text-caption text-disabled">صلاحيات مطلقة</span>
               </div>
-              <VAvatar color="primary" variant="tonal" size="42" class="rounded">
-                <VIcon icon="tabler-shield-lock" size="24" />
+              <VAvatar :color="item.name === 'إدارة النظام' ? 'error' : item.name === 'الصلاحية الافتراضية' ? 'info' : 'primary'" variant="tonal" size="42" class="rounded">
+                <VIcon :icon="item.name === 'إدارة النظام' ? 'tabler-shield-check' : 'tabler-shield-lock'" size="24" />
               </VAvatar>
             </div>
           </VCardText>

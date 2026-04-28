@@ -22,7 +22,12 @@ class ProductionPlanResource extends JsonResource
             'targetAmount' => (float) $cat->target_amount,
         ]);
 
-        $branchTargets = $this->branchTargets->map(fn($bt) => [
+        $userBranchId = auth()->check() ? auth()->user()->branch_id : null;
+        $filteredTargets = $userBranchId
+            ? $this->branchTargets->where('branch_id', $userBranchId)
+            : $this->branchTargets;
+
+        $branchTargets = $filteredTargets->map(fn($bt) => [
             'id'                    => $bt->id,
             'branchId'              => $bt->branch_id,
             'branchName'            => $bt->branch?->name,

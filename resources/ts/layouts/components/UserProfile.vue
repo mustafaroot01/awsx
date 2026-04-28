@@ -27,7 +27,7 @@ const logout = async () => {
 
 const userProfileList = [
   { type: 'divider' },
-  { type: 'navItem', icon: 'tabler-user', title: 'الملف الشخصي', to: { name: 'apps-user-view-id', params: { id: userData.value?.id || 0 } } },
+  { type: 'navItem', icon: 'tabler-user', title: 'الملف الشخصي', to: { name: 'apps-user-view-id', params: { id: userData.value?.id ?? 0 } } },
   { type: 'divider' },
 ]
 </script>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { showPermissionError } from '@/utils/api'
 
 definePage({
   meta: { action: 'create', subject: 'ProductionPlan' },
@@ -175,8 +176,8 @@ const confirmAndSave = async () => {
     showConfirmDialog.value = false
     router.push('/apps/production-plans/list')
   } catch (e: any) {
-    formError.value = e?.data?.message ?? 'حدث خطأ أثناء الحفظ'
-    showConfirmDialog.value = false
+    if (!showPermissionError(e))
+      formError.value = e?.data?.message ?? 'حدث خطأ أثناء الحفظ'
   } finally {
     isSaving.value = false
   }
@@ -650,7 +651,7 @@ const pct = (part: number, total: number) =>
         </VCardItem>
         <VDivider />
         <VCardText>
-          <VAlert type="primary" variant="tonal" class="mb-4" icon="tabler-cash">
+          <VAlert type="info" variant="tonal" class="mb-4" icon="tabler-cash">
             <div class="d-flex justify-space-between align-center">
               <span>إجمالي الخطة (مجموع جميع الفروع)</span>
               <strong class="text-h6">{{ formatCurrency(grandBranchTotal) }}</strong>
@@ -698,9 +699,15 @@ const pct = (part: number, total: number) =>
           </VTable>
         </VCardText>
         <VDivider />
+        <VDivider v-if="formError" />
+        <VCardText v-if="formError" class="pb-0">
+          <VAlert type="error" variant="tonal" closable @click:close="formError = ''">
+            {{ formError }}
+          </VAlert>
+        </VCardText>
         <VCardActions class="pa-4 gap-3">
           <VSpacer />
-          <VBtn variant="tonal" color="secondary" @click="showConfirmDialog = false">
+          <VBtn variant="tonal" color="secondary" @click="showConfirmDialog = false; formError = ''">
             تعديل
           </VBtn>
           <VBtn color="primary" prepend-icon="tabler-check" :loading="isSaving" @click="confirmAndSave">

@@ -138,6 +138,7 @@ declare global {
   const shallowReactive: typeof import('vue')['shallowReactive']
   const shallowReadonly: typeof import('vue')['shallowReadonly']
   const shallowRef: typeof import('vue')['shallowRef']
+  const showPermissionError: typeof import('./resources/ts/utils/api')['showPermissionError']
   const storeToRefs: typeof import('pinia')['storeToRefs']
   const syncRef: typeof import('@vueuse/core')['syncRef']
   const syncRefs: typeof import('@vueuse/core')['syncRefs']
@@ -237,6 +238,7 @@ declare global {
   const useGamepad: typeof import('@vueuse/core')['useGamepad']
   const useGenerateImageVariant: typeof import('./resources/ts/@core/composable/useGenerateImageVariant')['useGenerateImageVariant']
   const useGeolocation: typeof import('@vueuse/core')['useGeolocation']
+  const useGlobalToast: typeof import('./resources/ts/composables/useGlobalToast')['useGlobalToast']
   const useI18n: typeof import('vue-i18n')['useI18n']
   const useId: typeof import('vue')['useId']
   const useIdle: typeof import('@vueuse/core')['useIdle']
@@ -504,6 +506,7 @@ declare module 'vue' {
     readonly shallowReactive: UnwrapRef<typeof import('vue')['shallowReactive']>
     readonly shallowReadonly: UnwrapRef<typeof import('vue')['shallowReadonly']>
     readonly shallowRef: UnwrapRef<typeof import('vue')['shallowRef']>
+    readonly showPermissionError: UnwrapRef<typeof import('./resources/ts/utils/api')['showPermissionError']>
     readonly storeToRefs: UnwrapRef<typeof import('pinia')['storeToRefs']>
     readonly syncRef: UnwrapRef<typeof import('@vueuse/core')['syncRef']>
     readonly syncRefs: UnwrapRef<typeof import('@vueuse/core')['syncRefs']>
@@ -602,6 +605,7 @@ declare module 'vue' {
     readonly useGamepad: UnwrapRef<typeof import('@vueuse/core')['useGamepad']>
     readonly useGenerateImageVariant: UnwrapRef<typeof import('./resources/ts/@core/composable/useGenerateImageVariant')['useGenerateImageVariant']>
     readonly useGeolocation: UnwrapRef<typeof import('@vueuse/core')['useGeolocation']>
+    readonly useGlobalToast: UnwrapRef<typeof import('./resources/ts/composables/useGlobalToast')['useGlobalToast']>
     readonly useI18n: UnwrapRef<typeof import('vue-i18n')['useI18n']>
     readonly useId: UnwrapRef<typeof import('vue')['useId']>
     readonly useIdle: UnwrapRef<typeof import('@vueuse/core')['useIdle']>

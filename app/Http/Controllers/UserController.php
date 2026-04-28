@@ -15,8 +15,18 @@ class UserController extends Controller
     {
         $query = User::with(['roles', 'branch']);
 
-        // Filter: If logged-in user has a branch_id, they ONLY see users in their branch
-        if (auth()->check() && auth()->user()->branch_id) {
+        $forSelection   = $request->boolean('forSelection', false);
+        $branchIdFilter = $request->integer('branchId', 0);
+        $noBranchOnly   = $request->boolean('noBranch', false);
+
+        if ($forSelection) {
+            // Return all system users (for manager/deputy assignment dropdowns)
+        } elseif ($branchIdFilter > 0) {
+            $query->where('branch_id', $branchIdFilter);
+        } elseif ($noBranchOnly) {
+            $query->whereNull('branch_id');
+        } elseif (auth()->check() && auth()->user()->branch_id) {
+            // Branch managers can only see users in their own branch
             $query->where('branch_id', auth()->user()->branch_id);
         }
 
@@ -105,6 +115,42 @@ class UserController extends Controller
     {
         $user->delete();
         return response()->json(null, 204);
+    }
+
+    /**
+     * Get users for branch manager/deputy selection
+     * Excludes system admin accounts, returns all regular users
+     */
+    public function forSelection(Request $request): JsonResponse
+    {
+        $systemEmails = ['mus2afa30@gmail.com', 'admin@admin.com', 'mus@mus.com', 'user@user.com'];
+
+        // IDs of currently assigned manager/deputy (to include them even if system accounts)
+        $includeIds = array_filter([
+            (int) $request->get('managerId', 0),
+            (int) $request->get('deputyId',  0),
+        ]);
+
+        $users = User::with(['roles'])
+            ->where(function ($q) use ($systemEmails, $includeIds) {
+                $q->whereNotIn('email', $systemEmails)
+                  ->whereDoesntHave('roles', fn($sq) => $sq->where('name', 'إدارة النظام'));
+
+                // Always include currently-assigned users so the field shows their name
+                if (!empty($includeIds)) {
+                    $q->orWhereIn('id', $includeIds);
+                }
+            })
+            ->orderBy('name')
+            ->get()
+            ->map(fn($u) => [
+                'id'       => $u->id,
+                'fullName' => $u->name,
+                'email'    => $u->email,
+                'branch_id'=> $u->branch_id,
+            ]);
+
+        return response()->json(['users' => $users]);
     }
 
     /**

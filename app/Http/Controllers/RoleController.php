@@ -38,9 +38,9 @@ class RoleController extends Controller
 
     public function update(Request $request, Role $role): JsonResponse
     {
-        // Protect System Administration role
+        // Fully lock إدارة النظام
         if ($role->name === 'إدارة النظام') {
-            return response()->json(['message' => 'لا يمكن تعديل صلاحيات مجموعة إدارة النظام لأنها تملك صلاحيات مطلقة برمجياً.'], 422);
+            return response()->json(['message' => 'لا يمكن تعديل مجموعة إدارة النظام.'], 422);
         }
 
         $request->validate([
@@ -48,12 +48,25 @@ class RoleController extends Controller
             'permissions' => 'array',
         ]);
 
-        $role->update([
-            'name' => $request->name,
-        ]);
+        // Prevent renaming الصلاحية الافتراضية
+        if ($role->name === 'الصلاحية الافتراضية' && $request->name !== 'الصلاحية الافتراضية') {
+            return response()->json(['message' => 'لا يمكن تغيير اسم الصلاحية الافتراضية.'], 422);
+        }
+
+        $role->update(['name' => $request->name]);
 
         if ($request->has('permissions')) {
-            $role->permissions()->sync($request->permissions);
+            $permIds = $request->permissions;
+
+            // Ensure read.Auth is always kept in الصلاحية الافتراضية
+            if ($role->name === 'الصلاحية الافتراضية') {
+                $authPerm = \App\Models\Permission::where('slug', 'read.Auth')->first();
+                if ($authPerm && !in_array($authPerm->id, $permIds)) {
+                    $permIds[] = $authPerm->id;
+                }
+            }
+
+            $role->permissions()->sync($permIds);
         }
 
         return response()->json($role->load('permissions'));
@@ -61,9 +74,8 @@ class RoleController extends Controller
 
     public function destroy(Role $role): JsonResponse
     {
-        // Protect System Administration role
-        if ($role->name === 'إدارة النظام') {
-            return response()->json(['message' => 'لا يمكن حذف مجموعة إدارة النظام لأنها أساسية للنظام.'], 422);
+        if (in_array($role->name, ['إدارة النظام', 'الصلاحية الافتراضية'])) {
+            return response()->json(['message' => 'لا يمكن حذف هذه المجموعة لأنها أساسية للنظام.'], 422);
         }
 
         if ($role->users()->count() > 0) {

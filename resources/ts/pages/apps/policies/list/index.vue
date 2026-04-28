@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import AddPolicyDrawer from '@/views/apps/policies/list/AddPolicyDrawer.vue'
 import type { Policy } from '@db/apps/policies/types'
+import { showPermissionError } from '@/utils/api'
 
 definePage({
   meta: { action: 'read', subject: 'Policy' },
@@ -76,17 +77,25 @@ const openAddDrawer  = () => { router.push('/apps/policies/add') }
 const openEditDrawer = (p: Policy) => { router.push(`/apps/policies/add?id=${p.id}`) }
 
 const savePolicy = async (policyData: any) => {
-  if (policyData.id) {
-    await $api(`/apps/policies/${policyData.id}`, { method: 'PUT', body: policyData })
-  } else {
-    await $api('/apps/policies', { method: 'POST', body: policyData })
+  try {
+    if (policyData.id) {
+      await $api(`/apps/policies/${policyData.id}`, { method: 'PUT', body: policyData })
+    } else {
+      await $api('/apps/policies', { method: 'POST', body: policyData })
+    }
+    fetchPolicies()
+  } catch (e) {
+    showPermissionError(e)
   }
-  fetchPolicies()
 }
 
 const deletePolicy = async (id: number) => {
-  await $api(`/apps/policies/${id}`, { method: 'DELETE' })
-  fetchPolicies()
+  try {
+    await $api(`/apps/policies/${id}`, { method: 'DELETE' })
+    fetchPolicies()
+  } catch (e) {
+    showPermissionError(e)
+  }
 }
 
 const downloadPdf = (policy: Policy) => {

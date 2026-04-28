@@ -12,16 +12,37 @@ use App\Http\Controllers\SettingController;
 use App\Http\Controllers\ActivityLogController;
 use Illuminate\Support\Facades\Route;
 
+// Temporary Debug Route
+Route::get('/debug/eval-periods', function () {
+    $user = auth('api')->user();
+    $periods = \App\Models\EvaluationPeriod::with('branches')->withCount('evaluations')->get();
+    return response()->json([
+        'user_id'    => $user?->id,
+        'user_name'  => $user?->name,
+        'branch_id'  => $user?->branch_id,
+        'periods'    => $periods->map(fn($p) => [
+            'id'         => $p->id,
+            'label'      => $p->period_label,
+            'year'       => $p->year,
+            'status'     => $p->status,
+            'branch_ids' => $p->branches->pluck('id'),
+            'branch_names' => $p->branches->pluck('name'),
+        ]),
+    ]);
+})->middleware('auth:api');
+
 // Authentication
 Route::post('/auth/login', [AuthController::class, 'login']);
 Route::post('/auth/logout', [AuthController::class, 'logout']);
-Route::get('/auth/debug-rules', [AuthController::class, 'debugRules'])->middleware('auth:api');
+Route::get('/auth/debug-rules',   [AuthController::class, 'debugRules'])->middleware('auth:api');
+Route::get('/auth/refresh-rules', [AuthController::class, 'refreshRules'])->middleware('auth:api');
 
 Route::middleware('auth:api')->group(function () {
 
     // ── Users & Roles ──────────────────────────────────────────────
-    Route::get('/apps/users/roles',    [UserController::class,  'roles']);
-    Route::get('/apps/permissions',    [RoleController::class,  'permissions']);
+    Route::get('/apps/users/roles',         [UserController::class, 'roles']);
+    Route::get('/apps/users/for-selection', [UserController::class, 'forSelection'])->middleware('permission:read.Auth');
+    Route::get('/apps/permissions',         [RoleController::class, 'permissions']);
     Route::apiResource('apps/users', UserController::class)->middleware([
         'index'   => 'permission:read.User',
         'show'    => 'permission:read.User',
@@ -94,6 +115,7 @@ Route::middleware('auth:api')->group(function () {
     Route::delete('/apps/evaluation-periods/{evaluation_period}/evaluations/{evaluation}', [EvaluationPeriodController::class, 'destroyEvaluation'])->middleware('permission:delete.Evaluation');
     Route::post('/apps/evaluation-periods/{evaluation_period}/lock',                       [EvaluationPeriodController::class, 'lock'])           ->middleware('permission:update.Evaluation');
     Route::post('/apps/evaluation-periods/{evaluation_period}/toggle-status',              [EvaluationPeriodController::class, 'toggleStatus'])   ->middleware('permission:update.Evaluation');
+    Route::post('/apps/evaluation-periods/{evaluation_period}/sync-branches',              [EvaluationPeriodController::class, 'syncBranches'])   ->middleware('permission:update.Evaluation');
     Route::apiResource('apps/evaluation-periods', EvaluationPeriodController::class)->except(['update'])->middleware([
         'index'   => 'permission:read.Evaluation',
         'show'    => 'permission:read.Evaluation',

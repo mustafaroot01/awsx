@@ -72,6 +72,9 @@ class RBACSeeder extends Seeder
             // ── إعدادات النظام ────────────────────────────────────
             ['name' => 'إدارة إعدادات النظام',   'slug' => 'manage.Settings',      'category' => 'إعدادات النظام'],
             ['name' => 'عرض سجل النشاطات',       'slug' => 'read.Log',             'category' => 'إعدادات النظام'],
+
+            // ── أساسي (محمي - لا يُزال من الصلاحية الافتراضية) ──
+            ['name' => 'تسجيل الدخول وعرض الداشبورد', 'slug' => 'read.Auth', 'category' => 'أساسي'],
         ];
 
         foreach ($permissions as $p) {
@@ -84,6 +87,18 @@ class RBACSeeder extends Seeder
         $allIds = Permission::pluck('id');
 
         $roles = [
+            // ── إدارة النظام ──────────────────── محمي تماماً / كل شيء
+            [
+                'name'        => 'إدارة النظام',
+                'description' => 'صلاحية مطلقة محمية - لا يمكن تعديلها أو حذفها',
+                'permissions' => $allIds,
+            ],
+            // ── الصلاحية الافتراضية ───────────── للمستخدمين بدون دور
+            [
+                'name'        => 'الصلاحية الافتراضية',
+                'description' => 'صلاحية تُمنح تلقائياً لكل مستخدم جديد - read.Auth محمية',
+                'permissions' => Permission::whereIn('slug', ['read.Auth'])->pluck('id'),
+            ],
             // ── مدير عام ─────────────────────── كل شيء
             [
                 'name'        => 'مدير عام',
@@ -100,7 +115,7 @@ class RBACSeeder extends Seeder
                     'read.Statistics',
                     'read.Branch',
                     'read.Employee',
-                    'read.Evaluation',
+                    'read.Evaluation', 'create.Evaluation', 'update.Evaluation',
                 ])->pluck('id'),
             ],
             // ── موظف وثائق ───────────────────── إضافة وتعديل وطباعة وثائق فقط

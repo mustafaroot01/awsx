@@ -26,6 +26,10 @@ class EmployeeResource extends JsonResource
             'hireDate'     => $this->hire_date?->format('Y-m-d'),
             'avatar'       => $this->avatar,
             'branchId'     => $this->branch_id,
+            'branch'       => $this->whenLoaded('branch', fn() => [
+                'id'   => $this->branch?->id,
+                'name' => $this->branch?->name,
+            ]),
         ];
     }
 }

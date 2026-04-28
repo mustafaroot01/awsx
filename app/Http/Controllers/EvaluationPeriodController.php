@@ -67,6 +67,14 @@ class EvaluationPeriodController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        $existingOpen = EvaluationPeriod::where('status', 'open')->first();
+
+        if ($existingOpen) {
+            return response()->json([
+                'message' => "يوجد بالفعل فترة تقييم مفتوحة ({$existingOpen->period_label}). أوقف الفترة الحالية أو أقفلها أولاً قبل إنشاء فترة جديدة.",
+            ], 422);
+        }
+
         $period = EvaluationPeriod::create([
             'year'       => $request->input('year'),
             'period_no'  => $request->input('periodNo'),
@@ -90,6 +98,18 @@ class EvaluationPeriodController extends Controller
         return response()->json(new EvaluationPeriodResource($evaluation_period));
     }
 
+    public function syncBranches(Request $request, $id): JsonResponse
+    {
+        $period = EvaluationPeriod::findOrFail($id);
+        $branchIds = $request->input('branchIds', []);
+        $period->branches()->sync($branchIds);
+
+        return response()->json([
+            'message'  => 'تم تحديث الفروع بنجاح',
+            'branchIds' => $branchIds,
+        ]);
+    }
+
     public function toggleStatus($id): JsonResponse
     {
         $evaluation_period = EvaluationPeriod::findOrFail($id);
@@ -99,6 +119,19 @@ class EvaluationPeriodController extends Controller
         }
 
         $newStatus = ($evaluation_period->status === 'open') ? 'suspended' : 'open';
+
+        if ($newStatus === 'open') {
+            $existingOpen = EvaluationPeriod::where('status', 'open')
+                ->where('id', '!=', $evaluation_period->id)
+                ->first();
+
+            if ($existingOpen) {
+                return response()->json([
+                    'message' => "يوجد بالفعل فترة تقييم مفتوحة ({$existingOpen->period_label}). أوقف الفترة الأخرى أولاً.",
+                ], 422);
+            }
+        }
+
         $evaluation_period->update(['status' => $newStatus]);
 
         $message = ($newStatus === 'open') ? 'تم تفعيل الفترة بنجاح' : 'تم تعليق الفترة بنجاح';

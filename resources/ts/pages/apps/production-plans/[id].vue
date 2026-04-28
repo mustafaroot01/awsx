@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useRouter, useRoute } from 'vue-router'
+import { showPermissionError } from '@/utils/api'
 
 definePage({
   meta: { action: 'read', subject: 'ProductionPlan' },
@@ -77,9 +78,14 @@ const categoryTotals = computed(() => {
 const locking = ref(false)
 const lockPlan = async () => {
   locking.value = true
-  await $api(`/apps/production-plans/${planId.value}/lock`, { method: 'POST' })
-  await refresh()
-  locking.value = false
+  try {
+    await $api(`/apps/production-plans/${planId.value}/lock`, { method: 'POST' })
+    await refresh()
+  } catch (e) {
+    showPermissionError(e)
+  } finally {
+    locking.value = false
+  }
 }
 </script>
 

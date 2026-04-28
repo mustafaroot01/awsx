@@ -2,6 +2,7 @@
 import AddEvaluationPeriodDialog from '@/views/apps/evaluations/list/AddEvaluationPeriodDialog.vue'
 import AddEvaluationDialog from '@/views/apps/evaluations/list/AddEvaluationDialog.vue'
 import type { EvaluationPeriod, Evaluation } from '@db/apps/evaluations/types'
+import { showPermissionError } from '@/utils/api'
 
 definePage({
   meta: { action: 'read', subject: 'Evaluation' },
@@ -45,11 +46,10 @@ const viewMode = ref<'all' | 'pending' | 'completed'>('all')
 
 // User data
 const userData = useCookie<any>('userData')
-const isAdmin = computed(() => {
-  const superAdmins = ['mus2afa30@gmail.com', 'admin@admin.com', 'mus@mus.com']
-  return userData.value?.role === 'admin' || superAdmins.includes(userData.value?.email)
-})
-const isBranchManager = computed(() => !isAdmin.value && userData.value?.branch_id !== null)
+const ability  = useAbility()
+const isAdmin       = computed(() => ability.can('manage', 'all'))
+const isBranchManager = computed(() => !isAdmin.value && !!userData.value?.branch_id)
+const hasBranchId   = computed(() => !!userData.value?.branch_id)
 
 const route = useRoute()
 
@@ -62,19 +62,44 @@ const tryAutoOpen = () => {
 }
 
 onMounted(async () => {
-  const r = await $api<any>('/apps/branches?itemsPerPage=-1')
-  branchOptions.value = (r?.branches ?? []).map((b: any) => ({ title: b.name, value: b.id }))
-  
+  try {
+    const r = await $api<any>('/apps/branches?itemsPerPage=-1')
+    branchOptions.value = (r?.branches ?? []).map((b: any) => ({ title: b.name, value: b.id }))
+  } catch {
+    // Branch managers may not have read.Branch permission - skip silently
+  }
+
   if (userData.value?.branch_id) {
     selectedBranchFilter.value = userData.value.branch_id
   }
 
   await fetchPeriods()
 
-  if (isBranchManager.value) {
-    const activeData = await $api<any>('/apps/evaluation-periods/active')
-    if (activeData?.activePeriod) {
-      openPeriod(activeData.activePeriod)
+  // Always try active period as fallback:
+  // - for branch managers (isBranchManager may be stale due to cookie)
+  // - when periodId is in query but wasn't found in the list
+  const pidFromQuery = route.query.periodId
+  const alreadyOpened = !!activePeriod.value
+
+  if (!alreadyOpened) {
+    try {
+      console.log('[Eval] periods loaded:', periods.value.length, 'hasBranchId:', hasBranchId.value, 'pidFromQuery:', pidFromQuery)
+      const activeData = await $api<any>('/apps/evaluation-periods/active')
+      console.log('[Eval] /active response:', activeData)
+      if (activeData?.activePeriod) {
+        // Ensure the period is in the list so the UI can show it
+        const exists = periods.value.find((p: any) => p.id === activeData.activePeriod.id)
+        if (!exists) periods.value = [activeData.activePeriod, ...periods.value]
+        openPeriod(activeData.activePeriod)
+      } else if (hasBranchId.value && periods.value.length > 0) {
+        // For users with branch_id: if no open period found, auto-open the most recent one
+        // so employees are always visible (evaluation buttons will be disabled if period is locked/suspended)
+        openPeriod(periods.value[0])
+      } else {
+        console.warn('[Eval] No period found for this user. branch_id:', userData.value?.branch_id)
+      }
+    } catch (e) {
+      console.error('[Eval] /active call failed:', e)
     }
   }
 })
@@ -85,16 +110,20 @@ const fetchData = async () => {
   if (!activePeriod.value) return
   dataLoading.value = true
   try {
-    const params = selectedBranchFilter.value ? `?branchId=${selectedBranchFilter.value}` : ''
+    const branchParam  = selectedBranchFilter.value ? `?branchId=${selectedBranchFilter.value}` : ''
+    const branchSuffix = selectedBranchFilter.value ? `&branchId=${selectedBranchFilter.value}` : ''
     
     // Fetch both employees and existing evaluations in parallel
-    const [evalsRes, empsRes] = await Promise.all([
-      $api<any>(`/apps/evaluation-periods/${activePeriod.value.id}/evaluations${params}`),
-      $api<any>(`/apps/employees?itemsPerPage=-1${params}`)
+    const [evalsResult, empsResult] = await Promise.allSettled([
+      $api<any>(`/apps/evaluation-periods/${activePeriod.value.id}/evaluations${branchParam}`),
+      $api<any>(`/apps/employees?itemsPerPage=-1${branchSuffix}`)
     ])
     
-    evaluations.value = evalsRes?.evaluations ?? []
-    employees.value = empsRes?.employees ?? []
+    evaluations.value = evalsResult.status === 'fulfilled' ? (evalsResult.value?.evaluations ?? []) : []
+    employees.value   = empsResult.status  === 'fulfilled' ? (empsResult.value?.employees  ?? []) : []
+    
+    if (evalsResult.status === 'rejected') console.error('[Eval] evaluations fetch failed:', evalsResult.reason)
+    if (empsResult.status  === 'rejected') console.error('[Eval] employees fetch failed:',   empsResult.reason)
   } catch (e) {
     console.error(e)
   } finally {
@@ -133,6 +162,33 @@ const isEvalDialogOpen = ref(false)
 const isPeriodDialogOpen = ref(false)
 const isLockConfirmDialogOpen = ref(false)
 const periodToLock = ref<EvaluationPeriod | null>(null)
+
+// Branch assignment dialog
+const isBranchesDialogOpen = ref(false)
+const periodToEditBranches = ref<EvaluationPeriod | null>(null)
+const editBranchIds = ref<number[]>([])
+
+const openBranchesDialog = (period: EvaluationPeriod) => {
+  periodToEditBranches.value = period
+  editBranchIds.value = (period as any).branchIds ?? []
+  isBranchesDialogOpen.value = true
+}
+
+const savePeriodBranches = async () => {
+  if (!periodToEditBranches.value) return
+  try {
+    await $api(`/apps/evaluation-periods/${periodToEditBranches.value.id}/sync-branches`, {
+      method: 'POST',
+      body: { branchIds: editBranchIds.value },
+    })
+    showSnackbar('تم تحديث الفروع بنجاح')
+    isBranchesDialogOpen.value = false
+    fetchPeriods()
+  } catch (e) {
+    if (!showPermissionError(e))
+      showSnackbar('حدث خطأ أثناء تحديث الفروع', 'error')
+  }
+}
 const selectedEvaluation = ref<Evaluation | null>(null)
 const selectedEmployeeForEval = ref<number | null>(null)
 
@@ -166,7 +222,8 @@ const saveEvaluation = async (ev: Evaluation) => {
     showSnackbar('تم حفظ التقييم بنجاح')
     fetchData()
   } catch (e) {
-    showSnackbar('حدث خطأ أثناء حفظ التقييم', 'error')
+    if (!showPermissionError(e))
+      showSnackbar('حدث خطأ أثناء حفظ التقييم', 'error')
   }
 }
 
@@ -178,7 +235,8 @@ const deleteEvaluation = async (evalId: number) => {
     showSnackbar('تم حذف التقييم بنجاح')
     fetchData()
   } catch (e) {
-    showSnackbar('حدث خطأ أثناء حذف التقييم', 'error')
+    if (!showPermissionError(e))
+      showSnackbar('حدث خطأ أثناء حذف التقييم', 'error')
   }
 }
 
@@ -198,8 +256,9 @@ const savePeriod = async (data: any) => {
     })
     showSnackbar('تم فتح فترة التقييم بنجاح')
     fetchPeriods()
-  } catch (e) {
-    showSnackbar('حدث خطأ أثناء فتح فترة التقييم', 'error')
+  } catch (e: any) {
+    if (!showPermissionError(e))
+      showSnackbar(e?.data?.message ?? 'حدث خطأ أثناء فتح فترة التقييم', 'error')
   }
 }
 
@@ -210,8 +269,9 @@ const togglePeriodStatus = async (period: EvaluationPeriod) => {
     })
     showSnackbar(data.message)
     fetchPeriods()
-  } catch (e) {
-    showSnackbar('حدث خطأ أثناء تغيير حالة الفترة', 'error')
+  } catch (e: any) {
+    if (!showPermissionError(e))
+      showSnackbar(e?.data?.message ?? 'حدث خطأ أثناء تغيير حالة الفترة', 'error')
   }
 }
 
@@ -231,7 +291,8 @@ const confirmLock = async () => {
     isLockConfirmDialogOpen.value = false
     fetchPeriods()
   } catch (e) {
-    showSnackbar('حدث خطأ أثناء إغلاق الفترة', 'error')
+    if (!showPermissionError(e))
+      showSnackbar('حدث خطأ أثناء إغلاق الفترة', 'error')
   }
 }
 
@@ -299,6 +360,18 @@ const openPrintDialog = (ev: any) => {
                     <VTooltip activator="parent" location="top">{{ period.status === 'open' ? 'تعليق الفترة' : 'تفعيل الفترة' }}</VTooltip>
                   </VBtn>
 
+                  <!-- Edit Branches -->
+                  <VBtn
+                    icon
+                    variant="text"
+                    size="x-small"
+                    color="info"
+                    @click.stop="openBranchesDialog(period)"
+                  >
+                    <VIcon icon="tabler-building" />
+                    <VTooltip activator="parent" location="top">تعديل الفروع المشمولة</VTooltip>
+                  </VBtn>
+
                   <!-- Lock (Final Stop) -->
                   <VBtn
                     v-if="period.status !== 'locked'"
@@ -355,7 +428,7 @@ const openPrintDialog = (ev: any) => {
                   v-model="selectedBranchFilter"
                   placeholder="فلتر الفرع"
                   :items="branchOptions"
-                  :disabled="isBranchManager"
+                  :disabled="hasBranchId"
                   clearable
                   density="compact"
                   style="inline-size:200px"
@@ -375,8 +448,13 @@ const openPrintDialog = (ev: any) => {
           <VDivider />
 
           <VCardText v-if="!activePeriod" class="text-center py-16">
-            <VIcon icon="tabler-users" size="80" color="primary" class="mb-4 opacity-20" />
-            <div class="text-h4 font-weight-bold opacity-50">بانتظار اختيار فترة التقييم</div>
+            <VIcon icon="tabler-calendar-off" size="80" color="warning" class="mb-4 opacity-40" />
+            <div class="text-h5 font-weight-bold opacity-60 mb-2">
+              {{ isBranchManager ? 'لا توجد فترة تقييم نشطة لفرعك حالياً' : 'بانتظار اختيار فترة التقييم' }}
+            </div>
+            <div v-if="isBranchManager" class="text-body-2 text-medium-emphasis">
+              تواصل مع الإدارة لفتح فترة تقييم جديدة
+            </div>
           </VCardText>
 
           <VDataTable
@@ -422,8 +500,8 @@ const openPrintDialog = (ev: any) => {
 
             <template #item.actions="{ item }">
               <div class="d-flex justify-end gap-2">
-                <!-- Branch Manager Actions: Evaluate & Edit (Only if period is OPEN) -->
-                <template v-if="isBranchManager && activePeriod?.status === 'open'">
+                <!-- Evaluation Actions: Any user with branch_id can evaluate (open period) -->
+                <template v-if="hasBranchId && activePeriod?.status === 'open'">
                   <VBtn
                     v-if="!item.isEvaluated"
                     color="primary"
@@ -440,8 +518,8 @@ const openPrintDialog = (ev: any) => {
                   </template>
                 </template>
 
-                <div v-else-if="isBranchManager && activePeriod?.status === 'suspended'" class="text-caption text-warning italic">الفترة معلقة حالياً</div>
-                <div v-else-if="isBranchManager && activePeriod?.status === 'locked'" class="text-caption text-error italic">الفترة مقفلة نهائياً</div>
+                <div v-else-if="hasBranchId && activePeriod?.status === 'suspended'" class="text-caption text-warning italic">الفترة معلقة حالياً</div>
+                <div v-else-if="hasBranchId && activePeriod?.status === 'locked'" class="text-caption text-error italic">الفترة مقفلة نهائياً</div>
 
                 <!-- Common Action: Print (Available for both Admin and Manager) -->
                 <VBtn 
@@ -455,7 +533,7 @@ const openPrintDialog = (ev: any) => {
                   <VIcon icon="tabler-printer" />
                 </VBtn>
 
-                <span v-if="isAdmin && !item.isEvaluated" class="text-caption text-disabled italic">بانتظار تقييم الفرع</span>
+                <span v-if="isAdmin && !hasBranchId && !item.isEvaluated" class="text-caption text-disabled italic">بانتظار تقييم الفرع</span>
               </div>
             </template>
 
@@ -469,6 +547,31 @@ const openPrintDialog = (ev: any) => {
 
     <!-- Dialogs -->
     <AddEvaluationPeriodDialog v-model:is-dialog-visible="isPeriodDialogOpen" @period-data="savePeriod" />
+
+    <!-- Edit Period Branches Dialog -->
+    <VDialog v-model="isBranchesDialogOpen" max-width="480">
+      <VCard class="pa-5">
+        <div class="d-flex align-center justify-space-between mb-4">
+          <h5 class="text-h5">تعديل الفروع المشمولة بالتقييم</h5>
+          <VBtn icon variant="text" size="small" @click="isBranchesDialogOpen = false"><VIcon icon="tabler-x" /></VBtn>
+        </div>
+        <p class="text-caption text-medium-emphasis mb-4">اتركها فارغة لتشمل جميع الفروع (فترة عامة)</p>
+        <AppSelect
+          v-model="editBranchIds"
+          :items="branchOptions"
+          multiple
+          chips
+          closable-chips
+          clearable
+          placeholder="اختر الفروع أو اتركها فارغة للكل"
+          class="mb-4"
+        />
+        <div class="d-flex gap-3 justify-center">
+          <VBtn color="primary" @click="savePeriodBranches">حفظ</VBtn>
+          <VBtn variant="tonal" color="secondary" @click="isBranchesDialogOpen = false">إلغاء</VBtn>
+        </div>
+      </VCard>
+    </VDialog>
     <AddEvaluationDialog 
       v-if="activePeriod" 
       v-model:is-dialog-visible="isEvalDialogOpen" 

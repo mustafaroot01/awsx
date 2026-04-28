@@ -11,7 +11,8 @@ const yearOptions = Array.from({ length: 5 }, (_, i) => {
 })
 
 const userData = useCookie<any>('userData')
-const isAdmin = computed(() => userData.value?.role === 'admin')
+const ability  = useAbility()
+const isAdmin  = computed(() => ability.can('manage', 'all'))
 const branchId = computed(() => userData.value?.branch_id)
 const isBranchManager = computed(() => !isAdmin.value && !!branchId.value)
 
@@ -97,6 +98,38 @@ const categorySeries = computed(() => {
 const maxAmount = computed(() => Math.max(...categorySeries.value.map(c => c.amount), 1))
 
 const plans = computed(() => plansData.value?.plans ?? [])
+
+// ── Evaluation Widget ────────────────────────────────────────
+const evalEmployees = ref<any[]>([])
+const evalList      = ref<any[]>([])
+const evalLoading   = ref(false)
+
+const evalProgress = computed(() => ({
+  total:     evalEmployees.value.length,
+  evaluated: evalList.value.length,
+  pct:       evalEmployees.value.length
+    ? Math.round((evalList.value.length / evalEmployees.value.length) * 100)
+    : 0,
+}))
+
+const fetchEvalData = async () => {
+  const pid = activePeriodData.value?.activePeriod?.id
+  if (!pid) return
+  evalLoading.value = true
+  try {
+    const branchParam = branchId.value ? `?branchId=${branchId.value}` : ''
+    const empParam    = branchId.value ? `&branchId=${branchId.value}` : ''
+    const [evRes, emRes] = await Promise.all([
+      $api<any>(`/apps/evaluation-periods/${pid}/evaluations${branchParam}`),
+      $api<any>(`/apps/employees?itemsPerPage=-1${empParam}`),
+    ])
+    evalList.value      = evRes?.evaluations ?? []
+    evalEmployees.value = emRes?.employees   ?? []
+  } catch {}
+  finally { evalLoading.value = false }
+}
+
+onMounted(fetchEvalData)
 </script>
 
 <template>
@@ -139,6 +172,85 @@ const plans = computed(() => plansData.value?.plans ?? [])
               <VAvatar :color="card.color" variant="tonal" rounded size="52">
                 <VIcon :icon="card.icon" size="28" />
               </VAvatar>
+            </div>
+          </VCardText>
+        </VCard>
+      </VCol>
+    </VRow>
+
+    <!-- 👉 Evaluation Widget -->
+    <VRow v-if="$can('read', 'Evaluation') && hasActivePeriod" class="mb-6">
+      <VCol cols="12">
+        <VCard border="warning sm" variant="tonal" color="warning">
+          <VCardText class="pa-5">
+            <div class="d-flex align-center justify-space-between flex-wrap gap-4">
+
+              <!-- Title + period -->
+              <div class="d-flex align-center gap-3">
+                <VAvatar color="warning" rounded size="52" variant="elevated">
+                  <VIcon icon="tabler-clipboard-check" size="28" />
+                </VAvatar>
+                <div>
+                  <h5 class="text-h5 mb-0">استمارة التقييم الدوري</h5>
+                  <span class="text-body-2 text-medium-emphasis">{{ activePeriodLabel }}</span>
+                </div>
+              </div>
+
+              <!-- Stats -->
+              <div class="d-flex align-center gap-6">
+                <div v-if="evalLoading" class="d-flex align-center gap-2">
+                  <VProgressCircular indeterminate color="warning" size="24" width="3" />
+                  <span class="text-body-2">جاري التحميل...</span>
+                </div>
+
+                <template v-else>
+                  <!-- Evaluated -->
+                  <div class="text-center">
+                    <VAvatar color="success" variant="tonal" rounded size="44" class="mb-1">
+                      <VIcon icon="tabler-circle-check" size="22" />
+                    </VAvatar>
+                    <div class="text-h5 font-weight-bold text-success">{{ evalProgress.evaluated }}</div>
+                    <div class="text-caption text-medium-emphasis">مُقيَّم</div>
+                  </div>
+
+                  <VDivider vertical class="mx-2" style="height:50px" />
+
+                  <!-- Pending -->
+                  <div class="text-center">
+                    <VAvatar color="error" variant="tonal" rounded size="44" class="mb-1">
+                      <VIcon icon="tabler-clock" size="22" />
+                    </VAvatar>
+                    <div class="text-h5 font-weight-bold text-error">{{ evalProgress.total - evalProgress.evaluated }}</div>
+                    <div class="text-caption text-medium-emphasis">لم يُقيَّم</div>
+                  </div>
+
+                  <VDivider vertical class="mx-2" style="height:50px" />
+
+                  <!-- Total -->
+                  <div class="text-center">
+                    <VProgressCircular
+                      :model-value="evalProgress.pct"
+                      color="warning"
+                      size="52"
+                      width="5"
+                    >
+                      <span class="text-caption font-weight-bold">{{ evalProgress.pct }}%</span>
+                    </VProgressCircular>
+                    <div class="text-caption text-medium-emphasis mt-1">الإنجاز</div>
+                  </div>
+                </template>
+              </div>
+
+              <!-- Action button -->
+              <VBtn
+                color="warning"
+                size="large"
+                :to="{ name: 'apps-evaluations-list', query: { periodId: activePeriodData?.activePeriod?.id } }"
+                prepend-icon="tabler-clipboard-list"
+              >
+                بدء التقييم
+              </VBtn>
+
             </div>
           </VCardText>
         </VCard>

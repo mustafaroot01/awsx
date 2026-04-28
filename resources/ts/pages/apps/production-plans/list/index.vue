@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
 import type { ProductionPlan } from '@db/apps/production-plans/types'
+import { showPermissionError } from '@/utils/api'
 
 const router = useRouter()
 
@@ -40,13 +41,21 @@ const openEditPage = (plan: ProductionPlan) =>
   router.push({ path: '/apps/production-plans/add', query: { id: plan.id } })
 
 const deletePlan = async (id: number) => {
-  await $api(`/apps/production-plans/${id}`, { method: 'DELETE' })
-  fetchPlans()
+  try {
+    await $api(`/apps/production-plans/${id}`, { method: 'DELETE' })
+    fetchPlans()
+  } catch (e) {
+    showPermissionError(e)
+  }
 }
 
 const lockPlan = async (id: number) => {
-  await $api(`/apps/production-plans/${id}/lock`, { method: 'POST' })
-  fetchPlans()
+  try {
+    await $api(`/apps/production-plans/${id}/lock`, { method: 'POST' })
+    fetchPlans()
+  } catch (e) {
+    showPermissionError(e)
+  }
 }
 
 const viewAchievements = async (plan: ProductionPlan) => {

@@ -19,6 +19,7 @@ class EvaluationPeriodResource extends JsonResource
             'status'       => $this->status,
             'statusLabel'  => $this->status === 'locked' ? 'مقفلة' : 'مفتوحة',
             'evalCount'    => $this->evaluations_count ?? 0,
+            'branchIds'    => $this->whenLoaded('branches', fn() => $this->branches->pluck('id')->toArray(), null),
         ];
     }
 }

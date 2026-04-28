@@ -21,6 +21,11 @@ class ProductionPlanController extends Controller
             $query->where('year', $year);
         }
 
+        if (auth()->check() && auth()->user()->branch_id) {
+            $branchId = auth()->user()->branch_id;
+            $query->whereHas('branchTargets', fn($q) => $q->where('branch_id', $branchId));
+        }
+
         $plans = $query->orderBy('year', 'desc')->get();
 
         return response()->json([
@@ -44,6 +49,18 @@ class ProductionPlanController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        $year = $request->input('year');
+
+        $existingActive = ProductionPlan::where('year', $year)
+            ->where('is_locked', false)
+            ->first();
+
+        if ($existingActive) {
+            return response()->json([
+                'message' => "يوجد بالفعل خطة إنتاجية فعّالة لسنة {$year} ('{$existingActive->title}'). أقفل الخطة الحالية أولاً قبل إنشاء خطة جديدة.",
+            ], 422);
+        }
+
         $plan = ProductionPlan::create([
             'year'         => $request->input('year'),
             'title'        => $request->input('title'),

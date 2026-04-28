@@ -94,6 +94,48 @@ class AuthController extends Controller
         return response()->json(['message' => 'تم تسجيل الخروج بنجاح']);
     }
 
+    public function refreshRules(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $permissions = DB::table('permissions')
+            ->join('permission_role', 'permissions.id', '=', 'permission_role.permission_id')
+            ->join('role_user', 'permission_role.role_id', '=', 'role_user.role_id')
+            ->where('role_user.user_id', $user->id)
+            ->select('permissions.slug')
+            ->distinct()
+            ->get()->pluck('slug')->toArray();
+
+        $rules = [];
+        foreach ($permissions as $slug) {
+            if (str_contains($slug, '.')) {
+                [$action, $subject] = explode('.', $slug, 2);
+                $rules[] = ['action' => $action, 'subject' => $subject];
+            }
+        }
+        $rules[] = ['action' => 'read', 'subject' => 'Auth'];
+
+        $superAdmins = ['mus2afa30@gmail.com', 'admin@admin.com', 'mus@mus.com', 'user@user.com'];
+        $isSuperAdmin = in_array($user->email, $superAdmins)
+            || $user->roles()->whereIn('name', ['إدارة النظام', 'مدير عام'])->exists();
+        if ($isSuperAdmin) {
+            $rules = [['action' => 'manage', 'subject' => 'all']];
+        }
+
+        return response()->json([
+            'userAbilityRules' => $rules,
+            'userData' => [
+                'id'        => $user->id,
+                'fullName'  => $user->name,
+                'username'  => $user->name,
+                'email'     => $user->email,
+                'avatar'    => null,
+                'role'      => ($isSuperAdmin || count($rules) > 10) ? 'admin' : 'client',
+                'branch_id' => $user->branch_id,
+            ],
+        ]);
+    }
+
     public function debugRules(Request $request): JsonResponse
     {
         $user = $request->user();

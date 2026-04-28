@@ -50,11 +50,46 @@ class BranchController extends Controller
         return response()->json(new BranchResource($branch));
     }
 
+    private function validateManagerConflict(?int $managerId, ?int $deputyId, ?int $excludeBranchId = null): ?array
+    {
+        if ($managerId && $managerId === $deputyId) {
+            return ['message' => 'لا يمكن أن يكون المستخدم مديراً ومعاوناً في نفس الوقت.'];
+        }
+
+        if ($managerId) {
+            $conflict = Branch::where(function($q) use ($managerId) {
+                    $q->where('manager_id', $managerId)->orWhere('deputy_id', $managerId);
+                })
+                ->when($excludeBranchId, fn($q) => $q->where('id', '!=', $excludeBranchId))
+                ->first();
+            if ($conflict) {
+                return ['message' => 'هذا المستخدم معيّن بالفعل في فرع "' . $conflict->name . '".'];
+            }
+        }
+
+        if ($deputyId) {
+            $conflict = Branch::where(function($q) use ($deputyId) {
+                    $q->where('manager_id', $deputyId)->orWhere('deputy_id', $deputyId);
+                })
+                ->when($excludeBranchId, fn($q) => $q->where('id', '!=', $excludeBranchId))
+                ->first();
+            if ($conflict) {
+                return ['message' => 'هذا المستخدم (المعاون) معيّن بالفعل في فرع "' . $conflict->name . '".'];
+            }
+        }
+
+        return null;
+    }
+
     public function store(Request $request): JsonResponse
     {
         // Accept both managerId (frontend) and manager_id (standard)
         $managerId = $request->input('managerId') ?? $request->input('manager_id');
         $deputyId  = $request->input('deputyId')  ?? $request->input('deputy_id');
+
+        if ($error = $this->validateManagerConflict($managerId, $deputyId)) {
+            return response()->json($error, 422);
+        }
 
         $branch = Branch::create([
             'name'        => $request->input('name'),
@@ -79,6 +114,10 @@ class BranchController extends Controller
     {
         $managerId = $request->input('managerId') ?? $request->input('manager_id') ?? $branch->manager_id;
         $deputyId  = $request->input('deputyId')  ?? $request->input('deputy_id')  ?? $branch->deputy_id;
+
+        if ($error = $this->validateManagerConflict($managerId, $deputyId, $branch->id)) {
+            return response()->json($error, 422);
+        }
 
         $branch->update([
             'name'        => $request->input('name',        $branch->name),

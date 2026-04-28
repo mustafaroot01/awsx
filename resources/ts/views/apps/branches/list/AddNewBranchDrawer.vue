@@ -49,16 +49,14 @@ const deputySearch = ref('')
 
 const managerOptions = computed(() => {
   const q = managerSearch.value.toLowerCase()
-  return q
-    ? allUsers.value.filter(u => u.fullName.toLowerCase().includes(q) || u.email.toLowerCase().includes(q))
-    : allUsers.value
+  const base = allUsers.value.filter(u => u.id !== deputyId.value)
+  return q ? base.filter(u => u.fullName.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)) : base
 })
 
 const deputyOptions = computed(() => {
   const q = deputySearch.value.toLowerCase()
-  return q
-    ? allUsers.value.filter(u => u.fullName.toLowerCase().includes(q) || u.email.toLowerCase().includes(q))
-    : allUsers.value
+  const base = allUsers.value.filter(u => u.id !== managerId.value)
+  return q ? base.filter(u => u.fullName.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)) : base
 })
 
 const fillForm = (b: Branch) => {
@@ -69,21 +67,32 @@ const fillForm = (b: Branch) => {
   deputyId.value = b.deputyId
 }
 
-watch(() => props.branchToEdit, b => {
-  if (b) fillForm(b)
-})
-
 watch(() => props.isDrawerOpen, async open => {
-  if (open) {
-    isLoadingUsers.value = true
-    try {
-      const result = await $api<any>('/apps/users?itemsPerPage=-1')
-      allUsers.value = result?.users ?? []
-    } catch (e) { console.error(e) }
-    finally { isLoadingUsers.value = false }
-    
-    if (props.branchToEdit) fillForm(props.branchToEdit)
+  if (!open) {
+    allUsers.value = []
+    return
   }
+
+  // Reset selections before loading
+  managerId.value = null
+  deputyId.value  = null
+
+  isLoadingUsers.value = true
+  try {
+    const params = new URLSearchParams()
+    if (props.branchToEdit?.managerId) params.append('managerId', String(props.branchToEdit.managerId))
+    if (props.branchToEdit?.deputyId)  params.append('deputyId',  String(props.branchToEdit.deputyId))
+    const result = await $api<any>(`/apps/users/for-selection?${params.toString()}`)
+    allUsers.value = result?.users ?? []
+  } catch (e) {
+    console.error('forSelection error:', e)
+    allUsers.value = []
+  } finally {
+    isLoadingUsers.value = false
+  }
+
+  // Fill form AFTER users are loaded so VAutocomplete finds the items
+  if (props.branchToEdit) fillForm(props.branchToEdit)
 })
 
 const closeNavigationDrawer = () => {
@@ -187,18 +196,17 @@ const handleDrawerModelValueUpdate = (val: boolean) => {
                   variant="outlined"
                   density="comfortable"
                   hide-details="auto"
+                  no-data-text="لا يوجد مستخدمون في النظام"
                 >
                   <template #item="{ props: itemProps, item }">
                     <VListItem v-bind="itemProps">
-                      <template #subtitle>
-                        {{ item.raw.email }}
-                      </template>
+                      <template #subtitle>{{ item.raw.email }}</template>
                     </VListItem>
                   </template>
                 </VAutocomplete>
               </VCol>
 
-              <!-- معاون المدير (من المستخدمين) -->
+              <!-- معاون المدير (اختياري) -->
               <VCol cols="12">
                 <VAutocomplete
                   v-model="deputyId"
@@ -207,13 +215,14 @@ const handleDrawerModelValueUpdate = (val: boolean) => {
                   item-value="id"
                   item-title="fullName"
                   :loading="isLoadingUsers"
-                  label="معاون المدير"
+                  label="معاون المدير (اختياري)"
                   placeholder="ابحث باسم المستخدم أو البريد..."
                   clearable
                   no-filter
                   variant="outlined"
                   density="comfortable"
                   hide-details="auto"
+                  no-data-text="لا يوجد مستخدمون في النظام"
                 >
                   <template #item="{ props: itemProps, item }">
                     <VListItem v-bind="itemProps">

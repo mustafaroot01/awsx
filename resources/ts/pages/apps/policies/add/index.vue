@@ -6,6 +6,7 @@ import EngineeringDetails from '@/views/apps/policies/EngineeringDetails.vue'
 import VehicleDetails from '@/views/apps/policies/VehicleDetails.vue'
 import { requiredValidator } from '@core/utils/validators'
 import type { PolicyCategory } from '@db/apps/policies/types'
+import { showPermissionError } from '@/utils/api'
 
 definePage({
   meta: { action: 'create', subject: 'Policy' },
@@ -354,9 +355,11 @@ const onSubmit = async () => {
     }, 1500)
   } catch (error: any) {
     console.error('Failed to save policy', error)
-    snackbarText.value = 'حدث خطأ أثناء الحفظ: ' + (error.response?._data?.message || 'يرجى المحاولة لاحقاً')
-    snackbarColor.value = 'error'
-    showSnackbar.value = true
+    if (!showPermissionError(error)) {
+      snackbarText.value = 'حدث خطأ أثناء الحفظ: ' + (error.response?._data?.message || 'يرجى المحاولة لاحقاً')
+      snackbarColor.value = 'error'
+      showSnackbar.value = true
+    }
   } finally {
     isSaving.value = false
   }

@@ -11,7 +11,7 @@ class EmployeeController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = Employee::query();
+        $query = Employee::with('branch');
         
         // Filter by branch if the user is a branch manager
         if (auth()->check() && auth()->user()->branch_id) {
