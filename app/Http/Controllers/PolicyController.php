@@ -118,7 +118,7 @@ class PolicyController extends Controller
                 'issue_date'        => $request->input('issueDate'),
                 'expiry_date'       => $request->input('expiryDate'),
                 'branch_id'         => $branchId,
-                'employee_id'       => $request->input('employeeId', auth()->id()),
+                'employee_id'       => $request->input('employeeId'),
                 'notes'             => $request->input('notes'),
                 'source_of_funds'   => is_array($request->input('source_of_funds')) ? implode(',', $request->input('source_of_funds')) : $request->input('source_of_funds'),
                 'monthly_income'    => $request->input('monthly_income'),

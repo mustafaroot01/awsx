@@ -98,10 +98,24 @@ const deletePolicy = async (id: number) => {
   }
 }
 
-const downloadPdf = (policy: Policy) => {
-  // Direct link to the PDF download route
-  const url = `/api/apps/policies/${policy.id}/download-pdf`
-  window.open(url, '_blank')
+const downloadPdf = async (policy: Policy) => {
+  try {
+    const response = await $api(`/apps/policies/${policy.id}/download-pdf`, {
+      responseType: 'blob',
+    })
+
+    const blob = new Blob([response as any], { type: 'application/pdf' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', `policy_${policy.policy_no}.pdf`)
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.URL.revokeObjectURL(url)
+  } catch (e) {
+    showPermissionError(e)
+  }
 }
 
 const formatCurrency = (v: number) =>

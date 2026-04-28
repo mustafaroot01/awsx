@@ -88,13 +88,19 @@ class DocumentGeneratorService
                 <td width="20%">' . ($policy->occupation ?: '-') . '</td>
             </tr>
             <tr>
-                <td bgcolor="#f9f9f9"><strong>العنوان الدائم:</strong></td>
-                <td>' . ($policy->permanent_address ?: '-') . '</td>
+                <td bgcolor="#f9f9f9"><strong>الاسم التجاري:</strong></td>
+                <td>' . ($policy->trade_name ?: '-') . '</td>
                 <td bgcolor="#f9f9f9"><strong>رقم الهاتف:</strong></td>
                 <td>' . $policy->phone . '</td>
             </tr>
             <tr>
-                <td bgcolor="#f9f9f9"><strong>الحي:</strong></td>
+                <td bgcolor="#f9f9f9"><strong>العنوان الدائم:</strong></td>
+                <td>' . ($policy->permanent_address ?: '-') . '</td>
+                <td bgcolor="#f9f9f9"><strong>هاتف الموقع:</strong></td>
+                <td>' . ($policy->shop_phone ?: '-') . '</td>
+            </tr>
+            <tr>
+                <td bgcolor="#f9f9f9"><strong>الحي/المنطقة:</strong></td>
                 <td>' . ($policy->district ?: '-') . '</td>
                 <td bgcolor="#f9f9f9"><strong>المحلة:</strong></td>
                 <td>' . ($policy->mahalla ?: '-') . '</td>
@@ -102,8 +108,20 @@ class DocumentGeneratorService
             <tr>
                 <td bgcolor="#f9f9f9"><strong>الزقاق:</strong></td>
                 <td>' . ($policy->zuqaq ?: '-') . '</td>
+                <td bgcolor="#f9f9f9"><strong>الدار:</strong></td>
+                <td>' . ($policy->dar ?: '-') . '</td>
+            </tr>
+            <tr>
+                <td bgcolor="#f9f9f9"><strong>الشارع:</strong></td>
+                <td>' . ($policy->street_region ?: '-') . '</td>
+                <td bgcolor="#f9f9f9"><strong>رقم المحل:</strong></td>
+                <td>' . ($policy->shop_no ?: '-') . '</td>
+            </tr>
+            <tr>
                 <td bgcolor="#f9f9f9"><strong>مبلغ التأمين:</strong></td>
                 <td>' . number_format($policy->amount) . ' د.ع</td>
+                <td bgcolor="#f9f9f9"><strong>رقم الوثيقة:</strong></td>
+                <td>' . $policy->policy_no . '</td>
             </tr>
             <tr>
                 <td bgcolor="#f9f9f9"><strong>ملاحظات إضافية:</strong></td>
@@ -225,7 +243,22 @@ class DocumentGeneratorService
 
     private function renderGenericPlan($policy)
     {
-        return '<p align="center">خطة تأمين: ' . $this->getCategoryName($policy->category) . '</p>';
+        return '
+        <h3 style="background-color: #f0f4f8; color: #333; padding: 5px;">2. تفاصيل وثيقة ' . $this->getCategoryName($policy->category) . '</h3>
+        <table border="1" cellpadding="4">
+            <tr>
+                <td width="25%" bgcolor="#f9f9f9"><strong>نوع التأمين:</strong></td>
+                <td width="75%">' . $this->getCategoryName($policy->category) . '</td>
+            </tr>
+            <tr>
+                <td bgcolor="#f9f9f9"><strong>تاريخ النفاذ:</strong></td>
+                <td>من ' . $policy->issue_date->format('Y-m-d') . ' إلى ' . $policy->expiry_date->format('Y-m-d') . '</td>
+            </tr>
+            <tr>
+                <td bgcolor="#f9f9f9"><strong>الحالة:</strong></td>
+                <td>' . ($policy->status === 'active' ? 'سارية' : $policy->status) . '</td>
+            </tr>
+        </table>';
     }
 
     private function renderInspectionReport($report)
@@ -233,9 +266,56 @@ class DocumentGeneratorService
         return '
         <h3 style="background-color: #f0f4f8; color: #333; padding: 5px;">3. تقرير الكشف الفني</h3>
         <table border="1" cellpadding="4">
-            <tr><td width="20%" bgcolor="#f9f9f9"><strong>وصف البناء:</strong></td><td width="80%">' . ($report->construction_description ?: '-') . '</td></tr>
-            <tr><td bgcolor="#f9f9f9"><strong>المواد:</strong></td><td>الجدران: ' . $report->wall_material . ' | السقف: ' . $report->roof_material . '</td></tr>
-            <tr><td bgcolor="#f9f9f9"><strong>الأمان:</strong></td><td>الأقفال: ' . $report->doors_locks_type . ' | المطافئ: ' . $report->extinguishers . '</td></tr>
+            <tr>
+                <td width="20%" bgcolor="#f9f9f9"><strong>وصف البناء:</strong></td>
+                <td width="80%" colspan="3">' . ($report->construction_description ?: '-') . '</td>
+            </tr>
+            <tr>
+                <td width="20%" bgcolor="#f9f9f9"><strong>الجدران:</strong></td>
+                <td width="30%">' . ($report->wall_material ?: '-') . '</td>
+                <td width="20%" bgcolor="#f9f9f9"><strong>السقف:</strong></td>
+                <td width="30%">' . ($report->roof_material ?: '-') . '</td>
+            </tr>
+            <tr>
+                <td bgcolor="#f9f9f9"><strong>الأرضية:</strong></td>
+                <td>' . ($report->floor_material ?: '-') . '</td>
+                <td bgcolor="#f9f9f9"><strong>ارتباط الجيران:</strong></td>
+                <td>' . ($report->neighbors_connectivity ?: '-') . '</td>
+            </tr>
+            <tr>
+                <td bgcolor="#f9f9f9"><strong>طبيعة الجيران:</strong></td>
+                <td>' . ($report->neighbors_nature ?: '-') . '</td>
+                <td bgcolor="#f9f9f9"><strong>الشبابيك المحمية:</strong></td>
+                <td>' . ($report->window_grids ?: '-') . '</td>
+            </tr>
+            <tr>
+                <td bgcolor="#f9f9f9"><strong>نوع الإضاءة/التدفئة:</strong></td>
+                <td>' . ($report->lighting_type ?: '-') . '</td>
+                <td bgcolor="#f9f9f9"><strong>الوقود للمكائن:</strong></td>
+                <td>' . ($report->machine_fuel ?: '-') . '</td>
+            </tr>
+            <tr>
+                <td bgcolor="#f9f9f9"><strong>طبقات الخشب:</strong></td>
+                <td>' . ($report->wood_layers ?: '-') . '</td>
+                <td bgcolor="#f9f9f9"><strong>مصدر المياه:</strong></td>
+                <td>' . ($report->water_source ?: '-') . '</td>
+            </tr>
+            <tr>
+                <td bgcolor="#f9f9f9"><strong>الأمان (الأقفال):</strong></td>
+                <td>' . ($report->doors_locks_type ?: '-') . '</td>
+                <td bgcolor="#f9f9f9"><strong>المطافئ:</strong></td>
+                <td>' . ($report->extinguishers ?: '-') . '</td>
+            </tr>
+            <tr>
+                <td bgcolor="#f9f9f9"><strong>الحالة الكهربائية:</strong></td>
+                <td>' . ($report->electrical_state ?: '-') . '</td>
+                <td bgcolor="#f9f9f9"><strong>ملاحظات خطرة:</strong></td>
+                <td>' . ($report->hazardous_observation ?: '-') . '</td>
+            </tr>
+            <tr>
+                <td bgcolor="#f9f9f9"><strong>التخلص من النفايات:</strong></td>
+                <td colspan="3">' . ($report->waste_disposal ?: '-') . '</td>
+            </tr>
         </table>';
     }
 
@@ -253,8 +333,12 @@ class DocumentGeneratorService
             <tr>
                 <td bgcolor="#f9f9f9"><strong>نوع العمل:</strong></td>
                 <td>' . ($policy->business_type ?: '-') . '</td>
+                <td bgcolor="#f9f9f9"><strong>تاريخ التوقيع (AML):</strong></td>
+                <td>' . ($policy->aml_signed_at ? $policy->aml_signed_at->format('Y-m-d H:i') : '-') . '</td>
+            </tr>
+            <tr>
                 <td bgcolor="#f9f9f9"><strong>موظف الالتزام (AML):</strong></td>
-                <td>' . ($policy->aml_officer_name ?: '-') . '</td>
+                <td colspan="3">' . ($policy->aml_officer_name ?: '-') . '</td>
             </tr>
         </table>';
 
