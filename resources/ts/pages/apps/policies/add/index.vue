@@ -1,8 +1,12 @@
 <script setup lang="ts">
 import AMLDetails from '@/views/apps/policies/AMLDetails.vue'
+import CashDetails from '@/views/apps/policies/CashDetails.vue'
 import FireTheftDetails from '@/views/apps/policies/FireTheftDetails.vue'
+import GroupHealthDetails from '@/views/apps/policies/GroupHealthDetails.vue'
 import LifeDetails from '@/views/apps/policies/LifeDetails.vue'
 import EngineeringDetails from '@/views/apps/policies/EngineeringDetails.vue'
+import PersonalAccidentDetails from '@/views/apps/policies/PersonalAccidentDetails.vue'
+import TransportMarineDetails from '@/views/apps/policies/TransportMarineDetails.vue'
 import VehicleDetails from '@/views/apps/policies/VehicleDetails.vue'
 import { requiredValidator } from '@core/utils/validators'
 import type { PolicyCategory } from '@db/apps/policies/types'
@@ -24,15 +28,52 @@ const isFormValid = ref(false)
 const refForm = ref<any>()
 
 const steps = [
+  { title: 'اختيار فئة التأمين', icon: 'tabler-category' },
   { title: 'البيانات الأساسية', icon: 'tabler-file-info' },
   { title: 'تفاصيل التغطية', icon: 'tabler-shield-check' },
   { title: 'مكافحة غسل الأموال', icon: 'tabler-search' },
   { title: 'المراجعة والحفظ', icon: 'tabler-check' },
 ]
 
+const categoryMeta: Record<string, { title: string; icon: string; color: string; description: string }> = {
+  vehicle:         { title: 'تأمين السيارات', icon: 'tabler-car', color: 'primary', description: 'تغطية المركبات ضد الحوادث والسرقة' },
+  fire_theft:      { title: 'الحريق والسرقة', icon: 'tabler-flame', color: 'error', description: 'حماية المنشآت والممتلكات من الحريق' },
+  group_health:    { title: 'الصحي الجماعي', icon: 'tabler-heartbeat', color: 'success', description: 'تغطية صحية للمجموعات والشركات' },
+  transport_marine:{ title: 'النقل / البحري', icon: 'tabler-ship', color: 'info', description: 'تأمين البضائع أثناء النقل' },
+  engineering:     { title: 'التأمين الهندسي', icon: 'tabler-building', color: 'warning', description: 'مقاولات ومعدات هندسية' },
+  life:            { title: 'تأمين الحياة', icon: 'tabler-heart', color: 'pink', description: 'تأمين على الحياة والوفاة' },
+  personal_accident:{ title: 'الحوادث الشخصية', icon: 'tabler-bandage', color: 'secondary', description: 'تغطية حوادث الأفراد' },
+  cash:            { title: 'تأمين النقد', icon: 'tabler-cash', color: 'success', description: 'حماية الأموال النقدية' },
+}
+
+const selectCategory = (cat: string) => {
+  formData.value.category = cat as PolicyCategory
+  currentStep.value = 1
+}
+
+const goToStep = (index: number) => {
+  if (index > 0 && !formData.value.category) {
+    snackbarText.value = 'يرجى اختيار نوع الوثيقة أولاً'
+    snackbarColor.value = 'warning'
+    showSnackbar.value = true
+    return
+  }
+  currentStep.value = index
+}
+
+const handleNextStep = () => {
+  if (currentStep.value === 0 && !formData.value.category) {
+    snackbarText.value = 'يرجى اختيار نوع الوثيقة أولاً'
+    snackbarColor.value = 'warning'
+    showSnackbar.value = true
+    return
+  }
+  currentStep.value++
+}
+
 const formData = ref({
   policyNo: '',
-  category: (presetCategory.value || 'life') as PolicyCategory,
+  category: (presetCategory.value || '') as PolicyCategory,
   status: 'active',
   clientName: '',
   trade_name: '',
@@ -213,16 +254,74 @@ const formData = ref({
     furniture: { value: 0, description: '' },
     others: { value: 0, description: '' },
   },
+
+  groupHealthDetails: {
+    companyName: '',
+    employeeCount: null as number | null,
+    coverageType: 'basic',
+    coverageLimit: 0,
+    deductible: 0,
+    includesFamily: false,
+    exclusions: '',
+    notes: '',
+  },
+
+  transportMarineDetails: {
+    shipperName: '',
+    consigneeName: '',
+    transportMode: 'sea',
+    cargoType: 'general',
+    origin: '',
+    destination: '',
+    vesselName: '',
+    billOfLadingNo: '',
+    containerCount: null as number | null,
+    cargoValue: 0,
+    invoiceNo: '',
+    cargoDescription: '',
+    specialConditions: '',
+  },
+
+  personalAccidentDetails: {
+    insuredName: '',
+    idNumber: '',
+    occupationClass: 'class_1',
+    occupation: '',
+    coverType: 'death_only',
+    sumInsured: 0,
+    age: null as number | null,
+    includesMedical: false,
+    medicalLimit: 0,
+    beneficiaryName: '',
+    beneficiaryRelation: 'spouse',
+    exclusions: '',
+  },
+
+  cashDetails: {
+    insuredName: '',
+    locationType: 'bank_branch',
+    locationAddress: '',
+    securityLevel: 'high',
+    maxCashOnHand: 0,
+    maxCashInTransit: 0,
+    transitFrequency: null as number | null,
+    transitRoute: '',
+    hasGuard: false,
+    hasCCTV: false,
+    hasVault: false,
+    vaultType: '',
+    notes: '',
+  },
 })
 
 const branchOptions = ref<{ title: string; value: number }[]>([])
 const categoryOptions = [
+  { title: 'تأمين الحياة', value: 'life' },
+  { title: 'الصحي الجماعي', value: 'group_health' },
   { title: 'تأمين السيارات', value: 'vehicle' },
   { title: 'الحريق والسرقة', value: 'fire_theft' },
-  { title: 'الصحي الجماعي', value: 'group_health' },
-  { title: 'النقل / البحري', value: 'transport_marine' },
   { title: 'التأمين الهندسي', value: 'engineering' },
-  { title: 'تأمين الحياة', value: 'life' },
+  { title: 'النقل / البحري', value: 'transport_marine' },
   { title: 'الحوادث الشخصية', value: 'personal_accident' },
   { title: 'تأمين النقد', value: 'cash' },
 ]
@@ -305,6 +404,18 @@ onMounted(async () => {
       if (p.fireTheftDetails) {
         formData.value.fireTheftDetails = { ...formData.value.fireTheftDetails, ...p.fireTheftDetails }
       }
+
+      if (p.groupHealthDetails)
+        formData.value.groupHealthDetails = { ...formData.value.groupHealthDetails, ...p.groupHealthDetails }
+
+      if (p.transportMarineDetails)
+        formData.value.transportMarineDetails = { ...formData.value.transportMarineDetails, ...p.transportMarineDetails }
+
+      if (p.personalAccidentDetails)
+        formData.value.personalAccidentDetails = { ...formData.value.personalAccidentDetails, ...p.personalAccidentDetails }
+
+      if (p.cashDetails)
+        formData.value.cashDetails = { ...formData.value.cashDetails, ...p.cashDetails }
 
       if (p.companyDetails) {
         formData.value.companyDetails = { ...formData.value.companyDetails, ...p.companyDetails }
@@ -396,7 +507,7 @@ const onSubmit = async () => {
               class="d-flex flex-column align-center gap-2 cursor-pointer"
               :class="{ 'text-primary': currentStep >= index, 'text-disabled': currentStep < index }"
               style="min-width: 120px"
-              @click="currentStep = index"
+              @click="goToStep(index)"
             >
               <VAvatar
                 :color="currentStep >= index ? 'primary' : 'secondary'"
@@ -412,17 +523,125 @@ const onSubmit = async () => {
           <VDivider class="mb-8" />
 
           <VForm ref="refForm" v-model="isFormValid" @submit.prevent>
-            <!-- STEP 1: Basic Info -->
+            <!-- STEP 0: Select Category -->
             <div v-show="currentStep === 0">
+              <div class="text-center mb-6">
+                <h5 class="text-h5 mb-2">اختيار فئة التأمين</h5>
+                <p class="text-body-1 text-medium-emphasis">اختر نوع الوثيقة المناسبة لبدء الإصدار</p>
+              </div>
+
+              <!-- Priority Categories: Life & Group Health -->
+              <VRow class="mb-3">
+                <VCol
+                  v-for="cat in categoryOptions.filter(c => ['life','group_health'].includes(c.value))"
+                  :key="cat.value"
+                  cols="12"
+                  sm="6"
+                >
+                  <VCard
+                    :color="categoryMeta[cat.value]?.color"
+                    variant="outlined"
+                    class="cursor-pointer hover-elevated transition-all h-100"
+                    @click="selectCategory(cat.value)"
+                  >
+                    <VCardText class="d-flex flex-column align-center py-5 text-center">
+                      <VAvatar
+                        :color="categoryMeta[cat.value]?.color"
+                        variant="tonal"
+                        size="56"
+                        class="mb-2"
+                      >
+                        <VIcon :icon="categoryMeta[cat.value]?.icon || 'tabler-file'" size="28" />
+                      </VAvatar>
+                      <div class="text-subtitle-1 font-weight-bold mb-1">{{ cat.title }}</div>
+                      <div class="text-caption text-medium-emphasis">
+                        {{ categoryMeta[cat.value]?.description || '' }}
+                      </div>
+                    </VCardText>
+                  </VCard>
+                </VCol>
+              </VRow>
+
+              <div class="d-flex align-center gap-3 mb-3 px-2">
+                <VIcon icon="tabler-building-warehouse" color="secondary" />
+                <span class="text-subtitle-1 font-weight-bold text-secondary text-no-wrap">تأمين الممتلكات العامة</span>
+                <VDivider class="flex-grow-1" />
+              </div>
+
+              <!-- General Property Insurance -->
+              <VRow>
+                <VCol
+                  v-for="cat in categoryOptions.filter(c => !['life','group_health'].includes(c.value))"
+                  :key="cat.value"
+                  cols="12"
+                  sm="6"
+                  md="4"
+                  lg="3"
+                >
+                  <VCard
+                    :color="categoryMeta[cat.value]?.color"
+                    variant="outlined"
+                    class="cursor-pointer hover-elevated transition-all"
+                    @click="selectCategory(cat.value)"
+                  >
+                    <VCardText class="d-flex flex-column align-center py-3 text-center">
+                      <VAvatar
+                        :color="categoryMeta[cat.value]?.color"
+                        variant="tonal"
+                        size="40"
+                        class="mb-1"
+                      >
+                        <VIcon :icon="categoryMeta[cat.value]?.icon || 'tabler-file'" size="20" />
+                      </VAvatar>
+                      <div class="text-subtitle-2 font-weight-bold mb-1">{{ cat.title }}</div>
+                      <div class="text-caption text-medium-emphasis">
+                        {{ categoryMeta[cat.value]?.description || '' }}
+                      </div>
+                    </VCardText>
+                  </VCard>
+                </VCol>
+              </VRow>
+            </div>
+
+            <!-- STEP 1: Basic Info -->
+            <div v-show="currentStep === 1">
               <VRow>
                 <VCol cols="12">
-                  <div class="text-subtitle-1 mb-4 font-weight-bold">البيانات الأساسية للوثيقة</div>
+                  <div class="d-flex align-center gap-3 mb-4">
+                    <div class="text-subtitle-1 font-weight-bold">البيانات الأساسية للوثيقة</div>
+                    <VChip
+                      :color="categoryMeta[formData.category]?.color || 'primary'"
+                      variant="elevated"
+                      size="small"
+                      prepend-icon="tabler-tag"
+                    >
+                      {{ categoryOptions.find(c => c.value === formData.category)?.title }}
+                    </VChip>
+                    <VBtn
+                      size="small"
+                      variant="text"
+                      color="secondary"
+                      prepend-icon="tabler-edit"
+                      @click="currentStep = 0"
+                    >
+                      تغيير الفئة
+                    </VBtn>
+                  </div>
                 </VCol>
                 <VCol cols="12" md="6">
                   <AppTextField v-model="formData.policyNo" label="رقم الوثيقة *" placeholder="مثال: POL-2025-001" :rules="[requiredValidator]" persistent-placeholder />
                 </VCol>
+                
                 <VCol cols="12" md="6">
-                  <AppSelect v-model="formData.category" :items="categoryOptions" label="فئة التأمين *" :rules="[requiredValidator]" />
+                  <AppTextField
+                    :model-value="categoryOptions.find(c => c.value === formData.category)?.title"
+                    label="فئة التأمين"
+                    readonly
+                    variant="outlined"
+                    :prepend-inner-icon="categoryMeta[formData.category]?.icon || 'tabler-file'"
+                    :color="categoryMeta[formData.category]?.color || 'primary'"
+                    hide-details
+                  />
                 </VCol>
                 <VCol cols="12" md="6">
                   <AppTextField v-model="formData.clientName" label="اسم طالب التأمين الكامل *" :rules="[requiredValidator]" placeholder="الاسم كما في الهوية" />
@@ -466,7 +685,7 @@ const onSubmit = async () => {
             </div>
 
             <!-- STEP 2: Category Details -->
-            <div v-show="currentStep === 1">
+            <div v-show="currentStep === 2">
               <div v-if="formData.category === 'life'">
                 <LifeDetails :form-data="formData" />
               </div>
@@ -479,6 +698,18 @@ const onSubmit = async () => {
               <div v-else-if="formData.category === 'engineering'">
                 <EngineeringDetails :form-data="formData" />
               </div>
+              <div v-else-if="formData.category === 'group_health'">
+                <GroupHealthDetails :form-data="formData" />
+              </div>
+              <div v-else-if="formData.category === 'transport_marine'">
+                <TransportMarineDetails :form-data="formData" />
+              </div>
+              <div v-else-if="formData.category === 'personal_accident'">
+                <PersonalAccidentDetails :form-data="formData" />
+              </div>
+              <div v-else-if="formData.category === 'cash'">
+                <CashDetails :form-data="formData" />
+              </div>
               <div v-else class="pa-10 text-center">
                 <VIcon icon="tabler-info-circle" size="48" color="info" class="mb-4" />
                 <p>لا توجد بيانات إضافية مطلوبة لهذه الفئة حالياً</p>
@@ -486,12 +717,12 @@ const onSubmit = async () => {
             </div>
 
             <!-- STEP 3: AML / KYB -->
-            <div v-show="currentStep === 2">
+            <div v-show="currentStep === 3">
               <AMLDetails :form-data="formData" />
             </div >
 
             <!-- STEP 4: Review -->
-            <div v-show="currentStep === 3">
+            <div v-show="currentStep === 4">
               <VAlert type="info" variant="tonal" class="mb-6">
                 يرجى مراجعة كافة البيانات المدخلة قبل الحفظ. لن يكون بالإمكان تعديل بعض الحقول بعد الإصدار الرسمي.
               </VAlert>
@@ -525,12 +756,23 @@ const onSubmit = async () => {
                 السابق
               </VBtn>
 
+              <!-- Show category selector button when on step 1+ -->
+              <VBtn
+                v-if="currentStep === 1"
+                variant="text"
+                color="secondary"
+                prepend-icon="tabler-category"
+                @click="currentStep = 0"
+              >
+                تغيير فئة التأمين
+              </VBtn>
+
               <VBtn
                 v-if="currentStep < steps.length - 1"
                 append-icon="tabler-chevron-left"
-                @click="currentStep++"
+                @click="handleNextStep"
               >
-                التالي
+                {{ currentStep === 0 ? 'بدء الإصدار' : 'التالي' }}
               </VBtn>
 
               <VBtn
