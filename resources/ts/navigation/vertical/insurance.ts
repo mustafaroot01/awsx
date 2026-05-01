@@ -13,8 +13,8 @@ const navigation = [
     action: 'read',
     subject: 'Employee',
     children: [
-      { title: 'الموظفون',    to: 'apps-employees-list',       action: 'read',   subject: 'Employee' },
-      { title: 'سجل الحوافز', to: 'apps-employees-incentives', action: 'read',   subject: 'Employee' },
+      { title: 'الموظفون', to: 'apps-employees-list', action: 'read', subject: 'Employee' },
+      { title: 'العناوين الوظيفية', to: 'apps-employees-ranks', action: 'read', subject: 'Employee' },
     ],
   },
   {

@@ -24,6 +24,7 @@ declare module 'vue-router/auto-routes' {
     'apps-branches-list': RouteRecordInfo<'apps-branches-list', '/apps/branches/list', Record<never, never>, Record<never, never>>,
     'apps-employees-incentives': RouteRecordInfo<'apps-employees-incentives', '/apps/employees/incentives', Record<never, never>, Record<never, never>>,
     'apps-employees-list': RouteRecordInfo<'apps-employees-list', '/apps/employees/list', Record<never, never>, Record<never, never>>,
+    'apps-employees-ranks': RouteRecordInfo<'apps-employees-ranks', '/apps/employees/ranks', Record<never, never>, Record<never, never>>,
     'apps-evaluations-list': RouteRecordInfo<'apps-evaluations-list', '/apps/evaluations/list', Record<never, never>, Record<never, never>>,
     'apps-insurance-forms-fire-theft': RouteRecordInfo<'apps-insurance-forms-fire-theft', '/apps/insurance-forms/fire-theft', Record<never, never>, Record<never, never>>,
     'apps-insurance-forms-life': RouteRecordInfo<'apps-insurance-forms-life', '/apps/insurance-forms/life', Record<never, never>, Record<never, never>>,

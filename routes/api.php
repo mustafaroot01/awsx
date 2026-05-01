@@ -6,6 +6,7 @@ use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\EvaluationPeriodController;
 use App\Http\Controllers\PolicyController;
 use App\Http\Controllers\ProductionPlanController;
+use App\Http\Controllers\RankController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\SettingController;
@@ -63,6 +64,7 @@ Route::middleware('auth:api')->group(function () {
 
     // ── Employees ─────────────────────────────────────────────────
     Route::get('/apps/employees-search',                                       [EmployeeController::class, 'search']);
+    Route::get('/apps/employees/export-pdf',                                  [EmployeeController::class, 'exportPDF'])->middleware('permission:read.Employee');
     Route::get('/apps/employees/incentives',                                   [EmployeeController::class, 'incentivesHistory']);
     Route::get('/apps/employees/top-producers',                                [EmployeeController::class, 'topProducers']);
     Route::post('/apps/employees/{employee}/calculate-incentives',             [EmployeeController::class, 'calculateIncentives']);
@@ -71,6 +73,15 @@ Route::middleware('auth:api')->group(function () {
         'index'   => 'permission:read.Employee',
         'show'    => 'permission:read.Employee',
         'store'   => 'permission:create.Employee',
+        'update'  => 'permission:update.Employee',
+        'destroy' => 'permission:delete.Employee',
+    ]);
+
+    // ── Ranks (Job Titles) ────────────────────────────────────────
+    Route::apiResource('apps/ranks', RankController::class)->middleware([
+        'index'   => 'permission:read.Employee',
+        'show'    => 'permission:read.Employee',
+        'store'   => 'permission:update.Employee',
         'update'  => 'permission:update.Employee',
         'destroy' => 'permission:delete.Employee',
     ]);

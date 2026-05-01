@@ -4,14 +4,21 @@ import { useRouter, useRoute } from 'vue-router'
 import { showPermissionError } from '@/utils/api'
 
 definePage({
-  meta: { action: 'create', subject: 'ProductionPlan' },
+  meta: { action: 'read', subject: 'ProductionPlan' },
 })
 
 const router = useRouter()
 const route = useRoute()
 
 // ─── Edit mode: load plan if ?id= provided ───────────────────────────────────
-const planId = computed(() => route.query.id ? Number(route.query.id) : null)
+const planId = computed(() => {
+  // Fallback to window.location.search as route.query may not work with unplugin-vue-router
+  const urlParams = new URLSearchParams(window.location.search)
+  const raw = urlParams.get('id') ?? route.query.id ?? route.params.id
+  const num = raw ? Number(Array.isArray(raw) ? raw[0] : raw) : NaN
+  console.log('[Edit Mode Debug] window.search:', window.location.search, 'route.query:', route.query, 'planId:', num)
+  return Number.isFinite(num) && num > 0 ? num : null
+})
 const isEditMode = computed(() => !!planId.value)
 const pageTitle = computed(() => isEditMode.value ? 'تعديل الخطة الإنتاجية' : 'إضافة خطة إنتاجية جديدة')
 
@@ -27,20 +34,14 @@ interface BranchRow {
   _branchTarget:     number  // helper: total target for this branch
   life:              number
   group_health:      number
-  vehicle:           number
-  fire_theft:        number
-  transport_marine:  number
-  engineering:       number
-  personal_accident: number
-  cash:              number
+  general_property:  number  // single input for all property categories
 }
 
 const mkRow = (branchId: number | null = null): BranchRow => ({
   branchId,
   _branchTarget: 0,
   life: 0, group_health: 0,
-  vehicle: 0, fire_theft: 0, transport_marine: 0,
-  engineering: 0, personal_accident: 0, cash: 0,
+  general_property: 0,
 })
 
 const branchRows = ref<BranchRow[]>([])
@@ -56,20 +57,10 @@ const removeBranchRow = (idx: number) => branchRows.value.splice(idx, 1)
 const branchRowTotal = (row: BranchRow) =>
   (Number(row.life) || 0) +
   (Number(row.group_health) || 0) +
-  (Number(row.vehicle) || 0) +
-  (Number(row.fire_theft) || 0) +
-  (Number(row.transport_marine) || 0) +
-  (Number(row.engineering) || 0) +
-  (Number(row.personal_accident) || 0) +
-  (Number(row.cash) || 0)
+  (Number(row.general_property) || 0)
 
 const branchPropertyTotal = (row: BranchRow) =>
-  (Number(row.vehicle) || 0) +
-  (Number(row.fire_theft) || 0) +
-  (Number(row.transport_marine) || 0) +
-  (Number(row.engineering) || 0) +
-  (Number(row.personal_accident) || 0) +
-  (Number(row.cash) || 0)
+  Number(row.general_property) || 0
 
 const grandBranchTotal = computed(() =>
   branchRows.value.reduce((s, r) => s + branchRowTotal(r), 0)
@@ -97,31 +88,47 @@ const copyBranch = (src: BranchRow, dst: BranchRow) => {
   dst._branchTarget  = src._branchTarget
   dst.life              = src.life
   dst.group_health      = src.group_health
-  dst.vehicle           = src.vehicle
-  dst.fire_theft        = src.fire_theft
-  dst.transport_marine  = src.transport_marine
-  dst.engineering       = src.engineering
-  dst.personal_accident = src.personal_accident
-  dst.cash              = src.cash
+  dst.general_property  = src.general_property
 }
 
 // ─── Load branches + edit data ────────────────────────────────────────────────
-onMounted(async () => {
-  const result = await $api<any>('/apps/branches?itemsPerPage=-1')
-  branchOptions.value = (result?.branches ?? []).map((b: any) => ({ title: b.name, value: b.id }))
+const loadData = async () => {
+  try {
+    const result = await $api<any>('/apps/branches?itemsPerPage=-1')
+    branchOptions.value = (result?.branches ?? []).map((b: any) => ({ title: b.name, value: b.id }))
+  } catch (e) {
+    console.warn('[add.vue] Failed to load branches', e)
+  }
 
-  if (planId.value) {
-    const plan = await $api<any>(`/apps/production-plans/${planId.value}`)
-    planName.value = plan.title ?? ''
-    planYear.value = plan.year  ?? new Date().getFullYear()
+  if (!planId.value) return
+
+  try {
+    const res = await $api<any>(`/apps/production-plans/${planId.value}`)
+    const plan = res?.plan ?? res  // API may wrap in { plan, achievements }
+    planName.value = plan?.title ?? ''
+    planYear.value = plan?.year  ?? new Date().getFullYear()
 
     const grouped: Record<number, BranchRow> = {}
-    ;(plan.branchTargets ?? []).forEach((bt: any) => {
+    ;(plan?.branchTargets ?? []).forEach((bt: any) => {
       if (!grouped[bt.branchId]) grouped[bt.branchId] = mkRow(bt.branchId)
-      grouped[bt.branchId][bt.category as keyof BranchRow] = bt.targetAmount
+      const cat = bt.category as string
+      if (cat === 'life' || cat === 'group_health') {
+        grouped[bt.branchId][cat as keyof BranchRow] = bt.targetAmount
+      } else {
+        // Any property sub-category adds to general_property
+        grouped[bt.branchId].general_property = (grouped[bt.branchId].general_property || 0) + (Number(bt.targetAmount) || 0)
+      }
     })
     branchRows.value = Object.values(grouped)
+  } catch (e) {
+    console.error('[add.vue] Failed to load plan', e)
+    formError.value = 'فشل تحميل بيانات الخطة للتعديل'
   }
+}
+
+onMounted(loadData)
+watch(() => route.query.id, (newId, oldId) => {
+  if (newId !== oldId && newId) loadData()
 })
 
 // ─── Submit & Confirm ─────────────────────────────────────────────────────────
@@ -155,16 +162,21 @@ const confirmAndSave = async () => {
       { category: 'group_health',     targetAmount: validRows.reduce((s, r) => s + (Number(r.group_health) || 0), 0) },
       { category: 'general_property', targetAmount: validRows.reduce((s, r) => s + branchPropertyTotal(r), 0) },
     ],
-    branchTargets: validRows.flatMap(r => [
-      { branchId: r.branchId!, category: 'life',              targetAmount: Number(r.life) },
-      { branchId: r.branchId!, category: 'group_health',      targetAmount: Number(r.group_health) },
-      { branchId: r.branchId!, category: 'vehicle',           targetAmount: Number(r.vehicle) },
-      { branchId: r.branchId!, category: 'fire_theft',        targetAmount: Number(r.fire_theft) },
-      { branchId: r.branchId!, category: 'transport_marine',  targetAmount: Number(r.transport_marine) },
-      { branchId: r.branchId!, category: 'engineering',       targetAmount: Number(r.engineering) },
-      { branchId: r.branchId!, category: 'personal_accident', targetAmount: Number(r.personal_accident) },
-      { branchId: r.branchId!, category: 'cash',              targetAmount: Number(r.cash) },
-    ]),
+    branchTargets: validRows.flatMap(r => {
+      const propertyValue = Number(r.general_property) || 0
+      // Distribute general_property equally across the 6 sub-categories
+      const perCat = propertyValue / 6
+      return [
+        { branchId: r.branchId!, category: 'life',              targetAmount: Number(r.life) },
+        { branchId: r.branchId!, category: 'group_health',      targetAmount: Number(r.group_health) },
+        { branchId: r.branchId!, category: 'vehicle',           targetAmount: perCat },
+        { branchId: r.branchId!, category: 'fire_theft',        targetAmount: perCat },
+        { branchId: r.branchId!, category: 'transport_marine',  targetAmount: perCat },
+        { branchId: r.branchId!, category: 'engineering',       targetAmount: perCat },
+        { branchId: r.branchId!, category: 'personal_accident', targetAmount: perCat },
+        { branchId: r.branchId!, category: 'cash',              targetAmount: perCat },
+      ]
+    }),
   }
 
   try {
@@ -468,63 +480,27 @@ const pct = (part: number, total: number) =>
                     <!-- ── Group 3: الممتلكات العامة ── -->
                     <VCol cols="12"><VDivider class="my-1" /></VCol>
                     <VCol cols="12">
-                      <div class="d-flex align-center justify-space-between mb-3">
-                        <div class="d-flex align-center gap-2">
-                          <VIcon icon="tabler-building-store" color="warning" size="16" />
-                          <span class="text-caption font-weight-bold text-warning">الممتلكات العامة</span>
-                        </div>
-                        <span class="text-caption text-medium-emphasis">
-                          الإجمالي: {{ formatCurrency(branchPropertyTotal(row)) }}
-                        </span>
+                      <div class="d-flex align-center gap-2 mb-2">
+                        <VIcon icon="tabler-building-store" color="warning" size="16" />
+                        <span class="text-caption font-weight-bold text-warning">الممتلكات العامة</span>
                       </div>
-                    </VCol>
-                    <VCol cols="12" sm="6" md="4">
                       <AppTextField
-                        v-model="row.vehicle"
+                        v-model="row.general_property"
                         type="number" hide-details
-                        label="تأمين السيارات (د.ع)"
+                        label="إجمالي الممتلكات العامة (د.ع)"
                         placeholder="0"
                       />
-                    </VCol>
-                    <VCol cols="12" sm="6" md="4">
-                      <AppTextField
-                        v-model="row.fire_theft"
-                        type="number" hide-details
-                        label="الحريق والسرقة (د.ع)"
-                        placeholder="0"
-                      />
-                    </VCol>
-                    <VCol cols="12" sm="6" md="4">
-                      <AppTextField
-                        v-model="row.transport_marine"
-                        type="number" hide-details
-                        label="النقل / البحري (د.ع)"
-                        placeholder="0"
-                      />
-                    </VCol>
-                    <VCol cols="12" sm="6" md="4">
-                      <AppTextField
-                        v-model="row.engineering"
-                        type="number" hide-details
-                        label="التأمين الهندسي (د.ع)"
-                        placeholder="0"
-                      />
-                    </VCol>
-                    <VCol cols="12" sm="6" md="4">
-                      <AppTextField
-                        v-model="row.personal_accident"
-                        type="number" hide-details
-                        label="الحوادث الشخصية (د.ع)"
-                        placeholder="0"
-                      />
-                    </VCol>
-                    <VCol cols="12" sm="6" md="4">
-                      <AppTextField
-                        v-model="row.cash"
-                        type="number" hide-details
-                        label="تأمين النقد (د.ع)"
-                        placeholder="0"
-                      />
+                      <VAlert type="info" variant="tonal" density="compact" class="mt-2" icon="tabler-info-circle">
+                        <div class="text-caption font-weight-bold mb-1">تشمل الممتلكات العامة:</div>
+                        <VRow dense class="mt-0">
+                          <VCol cols="6" sm="4"><div class="d-flex align-center gap-1 text-caption"><VIcon icon="tabler-car" size="14" color="warning" /> تأمين السيارات</div></VCol>
+                          <VCol cols="6" sm="4"><div class="d-flex align-center gap-1 text-caption"><VIcon icon="tabler-flame" size="14" color="warning" /> الحريق والسرقة</div></VCol>
+                          <VCol cols="6" sm="4"><div class="d-flex align-center gap-1 text-caption"><VIcon icon="tabler-ship" size="14" color="warning" /> النقل / البحري</div></VCol>
+                          <VCol cols="6" sm="4"><div class="d-flex align-center gap-1 text-caption"><VIcon icon="tabler-building-bridge" size="14" color="warning" /> التأمين الهندسي</div></VCol>
+                          <VCol cols="6" sm="4"><div class="d-flex align-center gap-1 text-caption"><VIcon icon="tabler-bandage" size="14" color="warning" /> الحوادث الشخصية</div></VCol>
+                          <VCol cols="6" sm="4"><div class="d-flex align-center gap-1 text-caption"><VIcon icon="tabler-cash" size="14" color="warning" /> تأمين النقد</div></VCol>
+                        </VRow>
+                      </VAlert>
                     </VCol>
 
                   </VRow>
@@ -640,17 +616,19 @@ const pct = (part: number, total: number) =>
     <!-- ── Confirmation Dialog ── -->
     <VDialog v-model="showConfirmDialog" max-width="720" persistent>
       <VCard>
-        <VCardItem>
+        <VCardItem class="py-3 px-4" density="compact">
           <template #prepend>
-            <VAvatar color="primary" variant="tonal" rounded>
-              <VIcon icon="tabler-clipboard-check" />
+            <VAvatar color="primary" variant="tonal" rounded size="38" class="me-2">
+              <VIcon icon="tabler-clipboard-check" size="20" />
             </VAvatar>
           </template>
-          <VCardTitle>تأكيد {{ isEditMode ? 'تحديث' : 'حفظ' }} الخطة الإنتاجية</VCardTitle>
-          <VCardSubtitle>{{ planName }} — {{ planYear }}</VCardSubtitle>
+          <VCardTitle class="text-subtitle-1 font-weight-bold">تأكيد {{ isEditMode ? 'تحديث' : 'حفظ' }} الخطة الإنتاجية</VCardTitle>
+          <VCardSubtitle class="text-caption">{{ planName }} — {{ planYear }}</VCardSubtitle>
         </VCardItem>
-        <VDivider />
-        <VCardText>
+
+        <VDivider thickness="1" />
+
+        <VCardText class="pt-5">
           <VAlert type="info" variant="tonal" class="mb-4" icon="tabler-cash">
             <div class="d-flex justify-space-between align-center">
               <span>إجمالي الخطة (مجموع جميع الفروع)</span>
@@ -698,19 +676,22 @@ const pct = (part: number, total: number) =>
             </tfoot>
           </VTable>
         </VCardText>
-        <VDivider />
         <VDivider v-if="formError" />
         <VCardText v-if="formError" class="pb-0">
           <VAlert type="error" variant="tonal" closable @click:close="formError = ''">
             {{ formError }}
           </VAlert>
         </VCardText>
-        <VCardActions class="pa-4 gap-3">
-          <VSpacer />
-          <VBtn variant="tonal" color="secondary" @click="showConfirmDialog = false; formError = ''">
+
+        <VDivider thickness="1" />
+
+        <VCardActions class="justify-center gap-2 pa-3">
+          <VBtn variant="tonal" color="secondary" class="px-4" @click="showConfirmDialog = false; formError = ''">
+            <VIcon start icon="tabler-pencil" size="16" />
             تعديل
           </VBtn>
-          <VBtn color="primary" prepend-icon="tabler-check" :loading="isSaving" @click="confirmAndSave">
+          <VBtn color="primary" class="px-4" :loading="isSaving" @click="confirmAndSave">
+            <VIcon start icon="tabler-check" size="16" />
             تأكيد وحفظ الخطة
           </VBtn>
         </VCardActions>

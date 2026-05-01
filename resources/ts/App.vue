@@ -6,6 +6,7 @@ import { initConfigStore, useConfigStore } from '@core/stores/config'
 import { hexToRgb } from '@core/utils/colorConverter'
 import { useBranding } from '@/composables/useBranding'
 import { useGlobalToast } from '@/composables/useGlobalToast'
+import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog.vue'
 
 const { global } = useTheme()
 const { fetchSettings } = useBranding()
@@ -43,6 +44,9 @@ const { visible: toastVisible, message: toastMessage, color: toastColor } = useG
     <VApp :style="`--v-global-theme-primary: ${hexToRgb(global.current.value.colors.primary)}`">
       <RouterView />
       <ScrollToTop />
+
+      <!-- Global Confirm Delete Dialog -->
+      <ConfirmDeleteDialog />
 
       <!-- Global API Error Snackbar -->
       <VSnackbar

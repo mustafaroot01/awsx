@@ -15,11 +15,16 @@ class Employee extends Model
         'third_name',
         'fourth_name',
         'last_name',
+        'birth_date',
+        'national_id',
+        'phone',
+        'address',
         'degree',
         'rank',
         'education',
         'gender',
         'job_type',
+        'job_track',
         'production_no',
         'hire_date',
         'avatar',
@@ -27,6 +32,7 @@ class Employee extends Model
     ];
 
     protected $casts = [
+        'birth_date' => 'date:Y-m-d',
         'hire_date' => 'date:Y-m-d',
         'branch_id' => 'integer',
     ];
@@ -43,6 +49,12 @@ class Employee extends Model
 
     public function getFullNameAttribute(): string
     {
-        return "{$this->first_name} {$this->second_name} {$this->third_name} {$this->fourth_name} {$this->last_name}";
+        return collect([
+            $this->first_name,
+            $this->second_name,
+            $this->third_name,
+            $this->fourth_name,
+            $this->last_name,
+        ])->filter()->implode(' ') ?: '-';
     }
 }

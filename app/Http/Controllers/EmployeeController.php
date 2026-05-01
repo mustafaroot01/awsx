@@ -6,6 +6,7 @@ use App\Http\Resources\EmployeeResource;
 use App\Models\Employee;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Mpdf\Mpdf;
 
 class EmployeeController extends Controller
 {
@@ -24,8 +25,7 @@ class EmployeeController extends Controller
                     ->orWhere('second_name', 'LIKE', "%{$q}%")
                     ->orWhere('third_name', 'LIKE', "%{$q}%")
                     ->orWhere('fourth_name', 'LIKE', "%{$q}%")
-                    ->orWhere('last_name', 'LIKE', "%{$q}%")
-                    ->orWhere('employee_no', 'LIKE', "%{$q}%");
+                    ->orWhere('last_name', 'LIKE', "%{$q}%");
             });
         }
 
@@ -41,8 +41,24 @@ class EmployeeController extends Controller
             $query->where('degree', $degree);
         }
 
+        if ($employeeType = $request->get('employeeType')) {
+            if ($employeeType === 'producer') {
+                $query->where('job_track', 'producer');
+            }
+            elseif ($employeeType === 'admin') {
+                $query->where('job_track', 'admin')
+                    ->where(function ($q) {
+                        $q->whereNull('production_no')->orWhere('production_no', '');
+                    });
+            }
+            elseif ($employeeType === 'admin_producer') {
+                $query->where('job_track', 'admin')
+                    ->whereNotNull('production_no')
+                    ->where('production_no', '!=', '');
+            }
+        }
+
         $columnMap = [
-            'employeeNo' => 'employee_no',
             'name'       => 'first_name',
             'hireDate'   => 'hire_date',
         ];
@@ -78,6 +94,80 @@ class EmployeeController extends Controller
         return response()->json(new EmployeeResource($employee));
     }
 
+    public function exportPDF(Request $request)
+    {
+        $query = Employee::with('branch');
+
+        // Branch manager filter
+        if (auth()->check() && auth()->user()->branch_id) {
+            $query->where('branch_id', auth()->user()->branch_id);
+        }
+
+        // Apply same filters as index
+        if ($q = $request->get('q')) {
+            $query->where(function ($sub) use ($q) {
+                $sub->where('first_name', 'LIKE', "%{$q}%")
+                    ->orWhere('second_name', 'LIKE', "%{$q}%")
+                    ->orWhere('third_name', 'LIKE', "%{$q}%")
+                    ->orWhere('fourth_name', 'LIKE', "%{$q}%")
+                    ->orWhere('last_name', 'LIKE', "%{$q}%");
+            });
+        }
+
+        if ($gender = $request->get('gender')) {
+            $query->where('gender', $gender);
+        }
+
+        if ($jobType = $request->get('jobType')) {
+            $query->where('job_type', $jobType);
+        }
+
+        if ($degree = $request->get('degree')) {
+            $query->where('degree', $degree);
+        }
+
+        if ($employeeType = $request->get('employeeType')) {
+            if ($employeeType === 'producer') {
+                $query->where('job_track', 'producer');
+            }
+            elseif ($employeeType === 'admin') {
+                $query->where('job_track', 'admin')
+                    ->where(function ($q) {
+                        $q->whereNull('production_no')->orWhere('production_no', '');
+                    });
+            }
+            elseif ($employeeType === 'admin_producer') {
+                $query->where('job_track', 'admin')
+                    ->whereNotNull('production_no')
+                    ->where('production_no', '!=', '');
+            }
+        }
+
+        $employees = $query->orderBy('id')->get();
+
+        $fields = $request->get('fields') ? explode(',', $request->get('fields')) : [
+            'name', 'gender', 'degree', 'rank', 'jobTrack', 'jobType',
+            'productionNo', 'hireDate'
+        ];
+
+        $html = view('employees.pdf', compact('employees', 'fields'))->render();
+
+        $mpdf = new Mpdf([
+            'mode' => 'utf-8',
+            'format' => 'A4-L',
+            'default_font' => 'dejavusans',
+            'directionality' => 'rtl',
+            'autoScriptToLang' => true,
+            'autoLangToFont' => true,
+        ]);
+
+        $mpdf->WriteHTML($html);
+
+        return response($mpdf->Output('قائمة_الموظفين_' . now()->format('Y-m-d') . '.pdf', 'S'))
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', 'attachment; filename="قائمة_الموظفين_' . now()->format('Y-m-d') . '.pdf"');
+    }
+
     public function store(Request $request): JsonResponse
     {
         $branchId = $request->input('branchId');
@@ -88,17 +178,21 @@ class EmployeeController extends Controller
         }
 
         $employee = Employee::create([
-            'employee_no'   => $request->input('employeeNo'),
             'first_name'    => $request->input('firstName'),
             'second_name'   => $request->input('secondName'),
             'third_name'    => $request->input('thirdName'),
             'fourth_name'   => $request->input('fourthName'),
             'last_name'     => $request->input('lastName'),
+            'birth_date'    => $request->input('birthDate'),
+            'national_id'   => $request->input('nationalId'),
+            'phone'         => $request->input('phone'),
+            'address'       => $request->input('address'),
             'degree'        => $request->input('degree'),
             'rank'          => $request->input('rank'),
             'education'     => $request->input('education'),
             'gender'        => $request->input('gender'),
             'job_type'      => $request->input('jobType'),
+            'job_track'     => $request->input('jobTrack'),
             'production_no' => $request->input('productionNo'),
             'hire_date'     => $request->input('hireDate'),
             'avatar'        => $request->input('avatar'),
@@ -121,17 +215,21 @@ class EmployeeController extends Controller
             }
 
             $employee->update([
-                'employee_no'   => $request->input('employeeNo'),
                 'first_name'    => $request->input('firstName'),
                 'second_name'   => $request->input('secondName'),
                 'third_name'    => $request->input('thirdName'),
                 'fourth_name'   => $request->input('fourthName'),
                 'last_name'     => $request->input('lastName'),
+                'birth_date'    => $request->input('birthDate'),
+                'national_id'   => $request->input('nationalId'),
+                'phone'         => $request->input('phone'),
+                'address'       => $request->input('address'),
                 'degree'        => $request->input('degree'),
                 'rank'          => $request->input('rank'),
                 'education'     => $request->input('education'),
                 'gender'        => $request->input('gender'),
                 'job_type'      => $request->input('jobType'),
+                'job_track'     => $request->input('jobTrack'),
                 'production_no' => $request->input('productionNo'),
                 'hire_date'     => $request->input('hireDate'),
                 'avatar'        => $request->input('avatar'),
@@ -176,8 +274,7 @@ class EmployeeController extends Controller
                         ->orWhere('second_name', 'LIKE', "%{$q}%")
                         ->orWhere('third_name', 'LIKE', "%{$q}%")
                         ->orWhere('fourth_name', 'LIKE', "%{$q}%")
-                        ->orWhere('last_name', 'LIKE', "%{$q}%")
-                        ->orWhere('employee_no', 'LIKE', "%{$q}%");
+                        ->orWhere('last_name', 'LIKE', "%{$q}%");
                 });
             })
             ->orderBy('first_name')
@@ -186,7 +283,6 @@ class EmployeeController extends Controller
             ->map(fn(Employee $e) => [
                 'id'         => $e->id,
                 'name'       => $e->full_name,
-                'employeeNo' => $e->employee_no,
                 'rank'       => $e->rank,
             ]);
 

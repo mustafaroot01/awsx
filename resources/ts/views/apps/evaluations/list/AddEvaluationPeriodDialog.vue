@@ -91,14 +91,24 @@ const onSubmit = () => {
   <VDialog
     :model-value="props.isDialogVisible"
     max-width="600"
+    persistent
     @update:model-value="emit('update:isDialogVisible', $event)"
   >
     <DialogCloseBtn @click="closeDialog" />
 
-    <VCard class="pa-6">
-      <h4 class="text-h4 text-center mb-6">فتح فترة تقييم جديدة</h4>
+    <VCard>
+      <VCardItem class="py-3 px-4" density="compact">
+        <template #prepend>
+          <VAvatar color="primary" variant="tonal" rounded size="38" class="me-2">
+            <VIcon icon="tabler-calendar-plus" size="20" />
+          </VAvatar>
+        </template>
+        <VCardTitle class="text-subtitle-1 font-weight-bold">فتح فترة تقييم جديدة</VCardTitle>
+      </VCardItem>
 
-      <VForm ref="refForm" v-model="isFormValid" @submit.prevent="onSubmit">
+      <VDivider thickness="1" />
+
+      <VForm ref="refForm" v-model="isFormValid" @submit.prevent="onSubmit" class="px-4 py-3">
         <VRow>
           <VCol cols="12" md="6">
             <AppTextField
@@ -159,12 +169,21 @@ const onSubmit = () => {
             />
           </VCol>
 
-          <VCol cols="12" class="d-flex flex-wrap justify-center gap-4 mt-4">
-            <VBtn type="submit">فتح الفترة</VBtn>
-            <VBtn color="secondary" variant="tonal" @click="closeDialog">إلغاء</VBtn>
-          </VCol>
         </VRow>
       </VForm>
+
+      <VDivider thickness="1" />
+
+      <VCardActions class="justify-center gap-2 pa-3">
+        <VBtn variant="tonal" color="secondary" class="px-4" @click="closeDialog">
+          <VIcon start icon="tabler-x" size="16" />
+          إلغاء
+        </VBtn>
+        <VBtn type="submit" color="primary" class="px-4" @click="onSubmit">
+          <VIcon start icon="tabler-calendar-plus" size="16" />
+          فتح الفترة
+        </VBtn>
+      </VCardActions>
     </VCard>
   </VDialog>
 </template>

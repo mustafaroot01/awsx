@@ -160,17 +160,24 @@ const selectedEmployee = computed(() => {
   >
     <DialogCloseBtn @click="emit('update:isDialogVisible', false)" />
 
-    <VCard class="pa-sm-8 pa-4">
-      <VCardText>
-        <div class="mb-6">
-          <h4 class="text-h4 mb-1">
-            {{ isEditMode ? 'تعديل التقييم' : 'إجراء تقييم جديد' }}
-          </h4>
-          <p class="text-body-1 text-medium-emphasis">
-            موظف: <span class="font-weight-bold text-primary">{{ selectedEmployee?.title }}</span>
-          </p>
-        </div>
+    <VCard>
+      <VCardItem class="py-3 px-4" density="compact">
+        <template #prepend>
+          <VAvatar color="primary" variant="tonal" rounded size="38" class="me-2">
+            <VIcon icon="tabler-clipboard-check" size="20" />
+          </VAvatar>
+        </template>
+        <VCardTitle class="text-subtitle-1 font-weight-bold">
+          {{ isEditMode ? 'تعديل التقييم' : 'إجراء تقييم جديد' }}
+        </VCardTitle>
+        <VCardSubtitle class="text-caption">
+          موظف: <span class="font-weight-bold text-primary">{{ selectedEmployee?.title }}</span>
+        </VCardSubtitle>
+      </VCardItem>
 
+      <VDivider thickness="1" />
+
+      <VCardText class="pt-5">
         <VForm ref="refForm" v-model="isFormValid" @submit.prevent="onSubmit">
           <VRow>
             <!-- Score Inputs -->
@@ -218,14 +225,22 @@ const selectedEmployee = computed(() => {
               </VRow>
             </VCol>
 
-            <!-- Actions -->
-            <VCol cols="12" class="d-flex justify-center gap-4 mt-8">
-              <VBtn type="submit" size="large" class="px-10">حفظ التقييم</VBtn>
-              <VBtn variant="tonal" color="secondary" size="large" @click="emit('update:isDialogVisible', false)">إلغاء</VBtn>
-            </VCol>
           </VRow>
         </VForm>
       </VCardText>
+
+      <VDivider thickness="1" />
+
+      <VCardActions class="justify-center gap-2 pa-3">
+        <VBtn variant="tonal" color="secondary" class="px-4" @click="emit('update:isDialogVisible', false)">
+          <VIcon start icon="tabler-x" size="16" />
+          إلغاء
+        </VBtn>
+        <VBtn type="submit" color="primary" class="px-4" @click="onSubmit">
+          <VIcon start icon="tabler-check" size="16" />
+          {{ isEditMode ? 'تحديث التقييم' : 'حفظ التقييم' }}
+        </VBtn>
+      </VCardActions>
     </VCard>
   </VDialog>
 </template>

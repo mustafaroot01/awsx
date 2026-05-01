@@ -21,13 +21,13 @@ const isEditMode = computed(() => !!props.employeeToEdit)
 
 const isFormValid = ref(false)
 const refForm = ref<VForm>()
+const currentStep = ref(1)
 
 const firstName = ref('')
 const secondName = ref('')
 const thirdName = ref('')
 const fourthName = ref('')
 const lastName = ref('')
-const employeeNo = ref('')
 const degree = ref<string>()
 const rank = ref<string>()
 const jobTrack = ref<'producer' | 'admin' | null>(null)
@@ -35,35 +35,38 @@ const education = ref<string>()
 const gender = ref<'male' | 'female'>()
 const jobType = ref<'permanent' | 'contract' | 'daily_wage'>()
 const productionNo = ref('')
+const birthDate = ref('')
+const nationalId = ref('')
+const phone = ref('')
+const address = ref('')
 const hireDate = ref('')
 const branchId = ref<number | null>(null)
 
 const branchOptions = ref<{ title: string; value: number }[]>([])
 
 const degrees = [
-  'الخاصة', 'الأولى', 'الثانية', 'الثالثة', 'الرابعة', 'الخامسة', 'السادسة', 'السابعة',
+  'الخاصة', 'الأولى', 'الثانية', 'الثالثة', 'الرابعة', 'الخامسة', 'السادسة', 'السابعة', 'الثامنة', 'التاسعة', 'العاشرة',
 ]
 
-const producerRanks = [
-  'معاون منتج', 'منتج', 'منتج أقدم',
-  'معاون رئيس منتجين', 'رئيس منتجين', 'رئيس منتجين أقدم',
-]
+const rankOptions = ref<{ title: string; value: string; name: string; type: string }[]>([])
 
-const adminRanks = [
-  'كاتب', 'معاون ملاحظ', 'ملاحظ',
-  'معاون رئيس ملاحظين', 'رئيس ملاحظين', 'معاون مدير', 'مدير',
-]
+const producerRanks = computed(() =>
+  rankOptions.value.filter(r => r.type === 'producer').map(r => r.name)
+)
+const adminRanks = computed(() =>
+  rankOptions.value.filter(r => r.type === 'admin').map(r => r.name)
+)
 
 const filteredRankOptions = computed(() =>
-  jobTrack.value === 'producer' ? producerRanks
-  : jobTrack.value === 'admin'  ? adminRanks
+  jobTrack.value === 'producer' ? producerRanks.value
+  : jobTrack.value === 'admin'  ? adminRanks.value
   : []
 )
 
 watch(jobTrack, () => { rank.value = undefined })
 
 const educationLevels = [
-  'دكتوراه', 'ماجستير', 'بكالوريوس', 'دبلوم عالي', 'دبلوم متوسط', 'إعدادية', 'متوسطة', 'ابتدائية',
+  'دكتوراه', 'ماجستير', 'بكالوريوس', 'دبلوم عالي', 'دبلوم متوسط', 'إعدادية', 'متوسطة', 'ابتدائية', 'يقرأ ويكتب',
 ]
 
 const genderOptions = [
@@ -83,15 +86,18 @@ const fillForm = (emp: Employee) => {
   thirdName.value = emp.thirdName
   fourthName.value = emp.fourthName
   lastName.value = emp.lastName
-  employeeNo.value = emp.employeeNo
   degree.value = emp.degree
   rank.value = emp.rank
-  jobTrack.value = producerRanks.includes(emp.rank ?? '') ? 'producer'
-    : adminRanks.includes(emp.rank ?? '') ? 'admin'
-    : null
+  jobTrack.value = emp.jobTrack ?? (producerRanks.value.includes(emp.rank ?? '') ? 'producer'
+    : adminRanks.value.includes(emp.rank ?? '') ? 'admin'
+    : null)
   education.value = emp.education
   gender.value = emp.gender
   jobType.value = emp.jobType
+  birthDate.value = emp.birthDate ?? ''
+  nationalId.value = emp.nationalId ?? ''
+  phone.value = emp.phone ?? ''
+  address.value = emp.address ?? ''
   productionNo.value = emp.productionNo ?? ''
   hireDate.value = emp.hireDate
   branchId.value = emp.branchId
@@ -123,6 +129,19 @@ watch(() => props.isDialogVisible, async open => {
       }))
     }
 
+    // Fetch active ranks from API
+    try {
+      const ranksRes = await $api<any>('/apps/ranks?active=true')
+      rankOptions.value = (ranksRes ?? []).map((r: any) => ({
+        title: r.name,
+        value: r.name,
+        name: r.name,
+        type: r.type,
+      }))
+    } catch {
+      rankOptions.value = []
+    }
+
     if (props.employeeToEdit)
       fillForm(props.employeeToEdit)
   }
@@ -133,6 +152,11 @@ const closeDialog = () => {
   nextTick(() => {
     refForm.value?.reset()
     refForm.value?.resetValidation()
+    currentStep.value = 1
+    birthDate.value = ''
+    nationalId.value = ''
+    phone.value = ''
+    address.value = ''
     hireDate.value = ''
     branchId.value = null
     jobTrack.value = null
@@ -145,7 +169,6 @@ const onSubmit = () => {
     if (valid) {
       emit('employeeData', {
         id: props.employeeToEdit?.id ?? 0,
-        employeeNo: employeeNo.value,
         firstName: firstName.value,
         secondName: secondName.value,
         thirdName: thirdName.value,
@@ -156,6 +179,11 @@ const onSubmit = () => {
         education: education.value ?? '',
         gender: gender.value ?? 'male',
         jobType: jobType.value ?? 'permanent',
+        jobTrack: jobTrack.value ?? 'admin',
+        birthDate: birthDate.value || null,
+        nationalId: nationalId.value || null,
+        phone: phone.value || null,
+        address: address.value || null,
         productionNo: productionNo.value || null,
         hireDate: hireDate.value,
         avatar: props.employeeToEdit?.avatar ?? null,
@@ -165,6 +193,7 @@ const onSubmit = () => {
       nextTick(() => {
         refForm.value?.reset()
         refForm.value?.resetValidation()
+        currentStep.value = 1
         hireDate.value = ''
         branchId.value = null
       })
@@ -179,36 +208,80 @@ const dialogModelValueUpdate = (val: boolean) => {
 
 <template>
   <VDialog
-    :width="$vuetify.display.smAndDown ? 'auto' : 900"
+    :width="$vuetify.display.smAndDown ? 'auto' : 800"
     :model-value="props.isDialogVisible"
     @update:model-value="dialogModelValueUpdate"
   >
     <DialogCloseBtn @click="dialogModelValueUpdate(false)" />
 
-    <VCard class="pa-sm-8 pa-4">
-      <VCardText>
-        <h4 class="text-h4 text-center mb-2">
+    <VCard>
+      <!-- ── HEADER ── -->
+      <VCardItem class="py-3 px-4" density="compact">
+        <template #prepend>
+          <VAvatar color="primary" variant="tonal" rounded size="38" class="me-2">
+            <VIcon icon="tabler-user-plus" size="20" />
+          </VAvatar>
+        </template>
+        <VCardTitle class="text-subtitle-1 font-weight-bold">
           {{ isEditMode ? 'تعديل بيانات الموظف' : 'إضافة موظف جديد' }}
-        </h4>
-        <p class="text-body-1 text-center mb-6">
-          الرجاء تعبئة جميع الحقول المطلوبة
-        </p>
+        </VCardTitle>
+        <VCardSubtitle class="text-caption">
+          {{ currentStep === 1 ? 'الخطوة ١ — البيانات الشخصية' : 'الخطوة ٢ — البيانات الوظيفية' }}
+        </VCardSubtitle>
+      </VCardItem>
+
+      <VDivider thickness="1" />
+
+      <VCardText class="pa-4">
         <VForm
           ref="refForm"
           v-model="isFormValid"
-          class="mt-4"
           @submit.prevent="onSubmit"
         >
-            <VRow>
-              <!-- الاسم الأول -->
-              <VCol
-                cols="12"
-                md="6"
+          <!-- ── STEP INDICATOR (matching screenshot style) ── -->
+          <div class="d-flex justify-center gap-8 mb-6">
+            <div
+              v-for="(step, idx) in [
+                { num: 1, label: 'البيانات الشخصية', icon: 'tabler-user' },
+                { num: 2, label: 'البيانات الوظيفية', icon: 'tabler-briefcase' },
+              ]"
+              :key="idx"
+              class="d-flex flex-column align-center gap-1 cursor-pointer"
+              style="min-width: 100px;"
+              @click="currentStep = step.num"
+            >
+              <VAvatar
+                :color="currentStep >= step.num ? 'primary' : 'grey-lighten-2'"
+                variant="tonal"
+                size="48"
+                class="transition-all"
+                :class="{ 'elevation-2': currentStep === step.num }"
               >
+                <VIcon
+                  :icon="currentStep > step.num ? 'tabler-check' : step.icon"
+                  size="22"
+                />
+              </VAvatar>
+              <span
+                class="text-caption font-weight-bold transition-all"
+                :class="currentStep >= step.num ? 'text-primary' : 'text-medium-emphasis'"
+              >
+                {{ step.label }}
+              </span>
+            </div>
+          </div>
+
+          <!-- ═══════════════════════════════════════════════
+               STEP 1 — البيانات الشخصية
+          ═══════════════════════════════════════════════ -->
+          <VScaleTransition>
+            <VRow v-show="currentStep === 1">
+              <!-- الاسم الأول -->
+              <VCol cols="12" md="6">
                 <AppTextField
                   v-model="firstName"
                   :rules="[requiredValidator]"
-                  label="الاسم الأول"
+                  label="الاسم الأول *"
                   placeholder="أحمد"
                 />
               </VCol>
@@ -218,72 +291,109 @@ const dialogModelValueUpdate = (val: boolean) => {
                 <AppTextField
                   v-model="secondName"
                   :rules="[requiredValidator]"
-                  label="اسم الأب"
+                  label="اسم الأب *"
                   placeholder="محمد"
                 />
               </VCol>
 
-              <!-- ── السطر الثاني: اسم الجد الأول + الجد الثاني + اللقب ── -->
+              <!-- اسم الجد الأول -->
               <VCol cols="12" md="4">
                 <AppTextField
                   v-model="thirdName"
                   :rules="[requiredValidator]"
-                  label="اسم الجد الأول"
+                  label="اسم الجد الأول *"
                   placeholder="علي"
                 />
               </VCol>
 
+              <!-- اسم الجد الثاني -->
               <VCol cols="12" md="4">
                 <AppTextField
                   v-model="fourthName"
-                  :rules="[requiredValidator]"
                   label="اسم الجد الثاني"
                   placeholder="جاسم"
                 />
               </VCol>
 
+              <!-- اللقب -->
               <VCol cols="12" md="4">
                 <AppTextField
                   v-model="lastName"
-                  :rules="[requiredValidator]"
                   label="اللقب / العائلة"
                   placeholder="الموسوي"
                 />
               </VCol>
 
-              <!-- ── السطر الثالث: الجنس + الرقم الوظيفي ── -->
+              <!-- الجنس -->
               <VCol cols="12" md="6">
                 <AppSelect
                   v-model="gender"
                   :rules="[requiredValidator]"
-                  label="الجنس"
+                  label="الجنس *"
                   placeholder="اختر الجنس"
                   :items="genderOptions"
                 />
               </VCol>
 
+              <!-- الهاتف -->
               <VCol cols="12" md="6">
                 <AppTextField
-                  v-model="employeeNo"
-                  :rules="[requiredValidator]"
-                  label="الرقم الوظيفي"
-                  placeholder="101009"
+                  v-model="phone"
+                  label="هاتف الموظف"
+                  placeholder="0770 123 4567"
                 />
               </VCol>
 
-              <!-- ── السطر الرابع: الدرجة + نوع الموظف ── -->
+              <!-- تاريخ المواليد -->
+              <VCol cols="12" md="6">
+                <AppDateTimePicker
+                  v-model="birthDate"
+                  label="تاريخ المواليد"
+                  placeholder="YYYY-MM-DD"
+                  :config="{ dateFormat: 'Y-m-d', maxDate: 'today' }"
+                />
+              </VCol>
+
+              <!-- البطاقة الوطنية -->
+              <VCol cols="12" md="6">
+                <AppTextField
+                  v-model="nationalId"
+                  label="رقم البطاقة الوطنية"
+                  placeholder="12345678901"
+                />
+              </VCol>
+
+              <!-- العنوان / أقرب نقطة دالة -->
+              <VCol cols="12">
+                <AppTextarea
+                  v-model="address"
+                  label="العنوان أو أقرب نقطة دالة على السكن"
+                  placeholder="مثال: حي الجامعة - مقابل جامعة النهرين - بيت رقم ١٢"
+                  rows="3"
+                />
+              </VCol>
+            </VRow>
+          </VScaleTransition>
+
+          <!-- ═══════════════════════════════════════════════
+               STEP 2 — البيانات الوظيفية
+          ═══════════════════════════════════════════════ -->
+          <VScaleTransition>
+            <VRow v-show="currentStep === 2">
+              <!-- الدرجة -->
               <VCol cols="12" md="6">
                 <AppSelect
                   v-model="degree"
                   :rules="[requiredValidator]"
-                  label="الدرجة"
+                  label="الدرجة *"
                   placeholder="اختر الدرجة"
                   :items="degrees"
                 />
               </VCol>
 
+              <!-- نوع الموظف -->
               <VCol cols="12" md="6">
-                <div class="text-body-2 text-medium-emphasis mb-2">نوع الموظف</div>
+                <div class="text-body-2 text-medium-emphasis mb-2">نوع الموظف *</div>
                 <VBtnToggle
                   v-model="jobTrack"
                   divided
@@ -303,22 +413,70 @@ const dialogModelValueUpdate = (val: boolean) => {
                 </VBtnToggle>
               </VCol>
 
-              <!-- ── السطر الخامس: العنوان الوظيفي + الفرع ── -->
+              <!-- العنوان الوظيفي -->
               <VCol cols="12" md="6">
                 <AppSelect
                   v-model="rank"
                   :rules="[requiredValidator]"
                   :disabled="!jobTrack"
-                  label="العنوان الوظيفي"
+                  label="العنوان الوظيفي *"
                   :placeholder="!jobTrack ? 'حدد نوع الموظف أولاً' : 'اختر العنوان الوظيفي'"
                   :items="filteredRankOptions"
                 />
               </VCol>
 
+              <!-- الشهادة -->
+              <VCol cols="12" md="6">
+                <AppSelect
+                  v-model="education"
+                  :rules="[requiredValidator]"
+                  label="الشهادة *"
+                  placeholder="اختر الشهادة"
+                  :items="educationLevels"
+                />
+              </VCol>
+
+              <!-- نوع الوظيفة -->
+              <VCol cols="12" md="6">
+                <AppSelect
+                  v-model="jobType"
+                  :rules="[requiredValidator]"
+                  label="نوع الوظيفة *"
+                  placeholder="اختر نوع الوظيفة"
+                  :items="jobTypeOptions"
+                />
+              </VCol>
+
+              <!-- الرقم الإنتاجي -->
+              <VCol cols="12" md="6">
+                <AppTextField
+                  v-model="productionNo"
+                  label="الرقم الإنتاجي"
+                  placeholder="2024009"
+                />
+                <div class="text-caption text-medium-emphasis mt-1">
+                  <VIcon icon="tabler-info-circle" size="14" class="me-1" />
+                  في حال كان الموظف إدارياً، اترك هذا الحقل فارغاً
+                </div>
+              </VCol>
+
+              <!-- تاريخ التعيين -->
+              <VCol cols="12" md="6">
+                <AppDateTimePicker
+                  v-model="hireDate"
+                  :rules="[requiredValidator]"
+                  label="تاريخ التعيين *"
+                  placeholder="YYYY-MM-DD"
+                  :config="{ dateFormat: 'Y-m-d', maxDate: 'today' }"
+                />
+              </VCol>
+
+              <!-- الفرع -->
               <VCol cols="12" md="6">
                 <AppSelect
                   v-model="branchId"
-                  label="الفرع"
+                  :rules="[requiredValidator]"
+                  label="الفرع *"
                   placeholder="اختر الفرع"
                   :items="branchOptions"
                   :disabled="!!userData?.branch_id"
@@ -327,66 +485,59 @@ const dialogModelValueUpdate = (val: boolean) => {
                   clear-icon="tabler-x"
                 />
               </VCol>
-
-              <!-- ── السطر السادس: الشهادة + نوع الوظيفة ── -->
-              <VCol cols="12" md="6">
-                <AppSelect
-                  v-model="education"
-                  :rules="[requiredValidator]"
-                  label="الشهادة"
-                  placeholder="اختر الشهادة"
-                  :items="educationLevels"
-                />
-              </VCol>
-
-              <VCol cols="12" md="6">
-                <AppSelect
-                  v-model="jobType"
-                  :rules="[requiredValidator]"
-                  label="نوع الوظيفة"
-                  placeholder="اختر نوع الوظيفة"
-                  :items="jobTypeOptions"
-                />
-              </VCol>
-
-              <!-- ── السطر السابع: تاريخ التعيين + الرقم الإنتاجي ── -->
-              <VCol cols="12" md="6">
-                <AppDateTimePicker
-                  v-model="hireDate"
-                  :rules="[requiredValidator]"
-                  label="تاريخ التعيين"
-                  placeholder="YYYY-MM-DD"
-                  :config="{ dateFormat: 'Y-m-d', maxDate: 'today' }"
-                />
-              </VCol>
-
-              <VCol cols="12" md="6">
-                <AppTextField
-                  v-model="productionNo"
-                  label="الرقم الإنتاجي"
-                  placeholder="2024009"
-                />
-              </VCol>
-
-              <!-- أزرار الإرسال -->
-              <VCol
-                cols="12"
-                class="d-flex flex-wrap justify-center gap-4"
-              >
-                <VBtn type="submit">
-                  {{ isEditMode ? 'تحديث' : 'حفظ' }}
-                </VBtn>
-                <VBtn
-                  color="secondary"
-                  variant="tonal"
-                  @click="closeDialog"
-                >
-                  إلغاء
-                </VBtn>
-              </VCol>
             </VRow>
-          </VForm>
-        </VCardText>
-      </VCard>
+          </VScaleTransition>
+
+          <!-- ── NAVIGATION BUTTONS ── -->
+          <VDivider class="my-4" />
+
+          <div class="d-flex justify-space-between align-center">
+            <VBtn
+              v-if="currentStep > 1"
+              variant="tonal"
+              color="secondary"
+              class="px-4"
+              @click="currentStep--"
+            >
+              <VIcon start icon="tabler-arrow-right" size="16" />
+              السابق
+            </VBtn>
+            <div v-else />
+
+            <div class="d-flex gap-2">
+              <VBtn
+                variant="tonal"
+                color="error"
+                class="px-4"
+                @click="closeDialog"
+              >
+                <VIcon start icon="tabler-x" size="16" />
+                إلغاء
+              </VBtn>
+
+              <VBtn
+                v-if="currentStep === 1"
+                color="primary"
+                class="px-4"
+                @click="currentStep++"
+              >
+                التالي
+                <VIcon end icon="tabler-arrow-left" size="16" />
+              </VBtn>
+
+              <VBtn
+                v-else
+                type="submit"
+                color="primary"
+                class="px-4"
+              >
+                <VIcon start icon="tabler-check" size="16" />
+                {{ isEditMode ? 'تحديث' : 'حفظ' }}
+              </VBtn>
+            </div>
+          </div>
+        </VForm>
+      </VCardText>
+    </VCard>
   </VDialog>
 </template>

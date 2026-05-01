@@ -2,6 +2,7 @@
 import AddNewBranchDrawer from '@/views/apps/branches/list/AddNewBranchDrawer.vue'
 import type { Branch, BranchWithNames } from '@db/apps/branches/types'
 import { showPermissionError } from '@/utils/api'
+import { useConfirmDelete } from '@/composables/useConfirmDelete'
 
 definePage({
   meta: {
@@ -104,18 +105,20 @@ const saveBranch = async (branchData: Branch) => {
   }
 }
 
-const deleteBranch = async (id: number) => {
-  if (!confirm('هل أنت متأكد من حذف هذا الفرع؟')) return
-  try {
-    await $api(`/apps/branches/${id}`, {
-      method: 'DELETE',
-    })
-    showNotification('تم حذف الفرع بنجاح')
-    fetchBranches()
-  } catch (err) {
-    if (!showPermissionError(err))
-      showNotification('فشل في حذف الفرع', 'error')
-  }
+const { open: openConfirmDelete } = useConfirmDelete()
+
+const deleteBranch = (branch: BranchWithNames) => {
+  openConfirmDelete({
+    id: branch.id,
+    name: branch.name,
+    title: 'حذف فرع',
+    confirmLabel: 'نعم، احذف الفرع',
+    async onConfirm() {
+      await $api(`/apps/branches/${branch.id}`, { method: 'DELETE' })
+      showNotification('تم حذف الفرع بنجاح')
+      fetchBranches()
+    },
+  })
 }
 </script>
 
@@ -332,7 +335,7 @@ const deleteBranch = async (id: number) => {
                 </VListItem>
 
                 <!-- حذف -->
-                <VListItem v-if="$can('delete', 'Branch')" @click="deleteBranch(item.id)">
+                <VListItem v-if="$can('delete', 'Branch')" @click="deleteBranch(item)">
                   <template #prepend>
                     <VIcon icon="tabler-trash" color="error" />
                   </template>

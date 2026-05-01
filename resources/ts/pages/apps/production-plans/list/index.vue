@@ -2,6 +2,7 @@
 import { useRouter } from 'vue-router'
 import type { ProductionPlan } from '@db/apps/production-plans/types'
 import { showPermissionError } from '@/utils/api'
+import { useConfirmDelete } from '@/composables/useConfirmDelete'
 
 const router = useRouter()
 
@@ -40,13 +41,19 @@ const openAddPage = () => router.push('/apps/production-plans/add')
 const openEditPage = (plan: ProductionPlan) =>
   router.push({ path: '/apps/production-plans/add', query: { id: plan.id } })
 
-const deletePlan = async (id: number) => {
-  try {
-    await $api(`/apps/production-plans/${id}`, { method: 'DELETE' })
-    fetchPlans()
-  } catch (e) {
-    showPermissionError(e)
-  }
+const { open: openConfirmDelete } = useConfirmDelete()
+
+const deletePlan = (plan: ProductionPlan) => {
+  openConfirmDelete({
+    id: plan.id,
+    name: plan.title,
+    title: 'حذف خطة إنتاجية',
+    confirmLabel: 'نعم، احذف الخطة',
+    async onConfirm() {
+      await $api(`/apps/production-plans/${plan.id}`, { method: 'DELETE' })
+      fetchPlans()
+    },
+  })
 }
 
 const lockPlan = async (id: number) => {
@@ -80,13 +87,13 @@ const getProgressColor = (pct: number) => {
 const isPreviewDialogOpen = ref(false)
 const previewTargets = ref<any[]>([])
 
+const PROPERTY_CATEGORIES = ['vehicle', 'fire_theft', 'transport_marine', 'engineering', 'personal_accident', 'cash']
+
 const viewPlanTargets = (plan: ProductionPlan) => {
   activePlanTitle.value = plan.title
-  
-  // Format branch targets into a readable table format
-  // Group by branchId
+
   const grouped: Record<number, any> = {}
-  
+
   plan.branchTargets?.forEach(bt => {
     if (!grouped[bt.branchId]) {
       grouped[bt.branchId] = {
@@ -98,12 +105,20 @@ const viewPlanTargets = (plan: ProductionPlan) => {
         total: 0, total_achieved: 0,
       }
     }
-    grouped[bt.branchId][bt.category] = bt.targetAmount
-    grouped[bt.branchId][`${bt.category}_achieved`] = bt.achievedAmount ?? 0
+
+    if (PROPERTY_CATEGORIES.includes(bt.category)) {
+      // Sum all property sub-categories into general_property
+      grouped[bt.branchId].general_property += bt.targetAmount
+      grouped[bt.branchId].general_property_achieved += bt.achievedAmount ?? 0
+    } else {
+      grouped[bt.branchId][bt.category] = bt.targetAmount
+      grouped[bt.branchId][`${bt.category}_achieved`] = bt.achievedAmount ?? 0
+    }
+
     grouped[bt.branchId].total += bt.targetAmount
     grouped[bt.branchId].total_achieved += bt.achievedAmount ?? 0
   })
-  
+
   previewTargets.value = Object.values(grouped)
   isPreviewDialogOpen.value = true
 }
@@ -221,7 +236,7 @@ const viewPlanTargets = (plan: ProductionPlan) => {
                   <template #prepend><VIcon icon="tabler-lock" color="warning" /></template>
                   <VListItemTitle>قفل الخطة</VListItemTitle>
                 </VListItem>
-                <VListItem v-if="!item.isLocked && $can('delete', 'ProductionPlan')" @click="deletePlan(item.id)">
+                <VListItem v-if="!item.isLocked && $can('delete', 'ProductionPlan')" @click="deletePlan(item)">
                   <template #prepend><VIcon icon="tabler-trash" /></template>
                   <VListItemTitle>حذف</VListItemTitle>
                 </VListItem>

@@ -2,6 +2,7 @@
 import AddPolicyDrawer from '@/views/apps/policies/list/AddPolicyDrawer.vue'
 import type { Policy } from '@db/apps/policies/types'
 import { showPermissionError } from '@/utils/api'
+import { useConfirmDelete } from '@/composables/useConfirmDelete'
 
 definePage({
   meta: { action: 'read', subject: 'Policy' },
@@ -89,13 +90,19 @@ const savePolicy = async (policyData: any) => {
   }
 }
 
-const deletePolicy = async (id: number) => {
-  try {
-    await $api(`/apps/policies/${id}`, { method: 'DELETE' })
-    fetchPolicies()
-  } catch (e) {
-    showPermissionError(e)
-  }
+const { open: openConfirmDelete } = useConfirmDelete()
+
+const deletePolicy = (policy: Policy) => {
+  openConfirmDelete({
+    id: policy.id,
+    name: policy.policyNo ?? policy.customerName ?? 'الوثيقة',
+    title: 'حذف وثيقة تأمين',
+    confirmLabel: 'نعم، احذف الوثيقة',
+    async onConfirm() {
+      await $api(`/apps/policies/${policy.id}`, { method: 'DELETE' })
+      fetchPolicies()
+    },
+  })
 }
 
 const downloadPdf = async (policy: Policy) => {
@@ -298,7 +305,7 @@ const widgetData = computed(() => [
                     <template #prepend><VIcon icon="tabler-pencil" color="warning" /></template>
                     <VListItemTitle>تعديل الوثيقة</VListItemTitle>
                   </VListItem>
-                  <VListItem v-if="$can('delete', 'Policy')" @click="deletePolicy(item.id)">
+                  <VListItem v-if="$can('delete', 'Policy')" @click="deletePolicy(item)">
                     <template #prepend><VIcon icon="tabler-trash" /></template>
                     <VListItemTitle>حذف</VListItemTitle>
                   </VListItem>

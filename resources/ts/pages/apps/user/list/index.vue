@@ -282,36 +282,33 @@ watch(isAddNewUserDrawerVisible, (val) => {
     />
 
     <!-- 👉 Delete Confirmation Dialog -->
-    <VDialog
-      v-model="isConfirmDeleteDialogOpen"
-      max-width="500px"
-    >
-      <VCard class="pa-4 text-center">
-        <VCardText class="pt-6">
-          <VIcon
-            icon="tabler-alert-circle"
-            size="80"
-            color="warning"
-            class="mb-4"
-          />
-          <h4 class="text-h4 mb-2">هل أنت متأكد من الحذف؟</h4>
-          <p class="text-body-1">لا يمكن التراجع عن هذه العملية بعد التأكيد.</p>
+    <VDialog v-model="isConfirmDeleteDialogOpen" max-width="420" persistent>
+      <VCard>
+        <VCardItem class="py-3 px-4" density="compact">
+          <template #prepend>
+            <VAvatar color="error" variant="tonal" size="38" rounded class="me-2">
+              <VIcon icon="tabler-alert-triangle" size="20" />
+            </VAvatar>
+          </template>
+          <VCardTitle class="text-subtitle-1 font-weight-bold">حذف مستخدم</VCardTitle>
+        </VCardItem>
+
+        <VDivider thickness="1" />
+
+        <VCardText class="py-4 text-body-2 text-medium-emphasis text-center">
+          هل أنت متأكد من حذف هذا المستخدم؟ لا يمكن التراجع عن هذا الإجراء.
         </VCardText>
 
-        <VCardActions class="justify-center gap-4 pb-6">
-          <VBtn
-            color="error"
-            variant="elevated"
-            @click="deleteUser"
-          >
-            نعم، احذف المستخدم
+        <VDivider thickness="1" />
+
+        <VCardActions class="justify-center gap-2 pa-3">
+          <VBtn variant="tonal" color="secondary" class="px-4" @click="isConfirmDeleteDialogOpen = false">
+            <VIcon start icon="tabler-x" size="16" />
+            إلغاء
           </VBtn>
-          <VBtn
-            color="secondary"
-            variant="tonal"
-            @click="isConfirmDeleteDialogOpen = false"
-          >
-            إلغاء التراجع
+          <VBtn color="error" variant="elevated" class="px-4" @click="deleteUser">
+            <VIcon start icon="tabler-trash" size="16" />
+            نعم، احذف المستخدم
           </VBtn>
         </VCardActions>
       </VCard>

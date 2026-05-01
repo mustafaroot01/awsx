@@ -235,8 +235,14 @@ class ProductionPlanController extends Controller
 
             // Build group-level rows with sub-category breakdown
             $categories = [];
+            $propertySubCats = ['vehicle', 'fire_theft', 'transport_marine', 'engineering', 'personal_accident', 'cash'];
+
             foreach ($planCategories as $planCat) {
-                $target = (float) $targets->where('category', $planCat)->sum('target_amount');
+                if ($planCat === 'general_property') {
+                    $target = (float) $targets->whereIn('category', $propertySubCats)->sum('target_amount');
+                } else {
+                    $target = (float) $targets->where('category', $planCat)->sum('target_amount');
+                }
                 $achieved = $achievedByGroup[$planCat];
 
                 $categories[$planCat] = [

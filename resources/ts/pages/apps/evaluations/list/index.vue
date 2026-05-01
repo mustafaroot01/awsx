@@ -3,6 +3,7 @@ import AddEvaluationPeriodDialog from '@/views/apps/evaluations/list/AddEvaluati
 import AddEvaluationDialog from '@/views/apps/evaluations/list/AddEvaluationDialog.vue'
 import type { EvaluationPeriod, Evaluation } from '@db/apps/evaluations/types'
 import { showPermissionError } from '@/utils/api'
+import { useConfirmDelete } from '@/composables/useConfirmDelete'
 
 definePage({
   meta: { action: 'read', subject: 'Evaluation' },
@@ -227,17 +228,22 @@ const saveEvaluation = async (ev: Evaluation) => {
   }
 }
 
-const deleteEvaluation = async (evalId: number) => {
-  try {
-    await $api(`/apps/evaluation-periods/${activePeriod.value!.id}/evaluations/${evalId}`, {
-      method: 'DELETE',
-    })
-    showSnackbar('تم حذف التقييم بنجاح')
-    fetchData()
-  } catch (e) {
-    if (!showPermissionError(e))
-      showSnackbar('حدث خطأ أثناء حذف التقييم', 'error')
-  }
+const { open: openConfirmDelete } = useConfirmDelete()
+
+const deleteEvaluation = (evalId: number, employeeName: string) => {
+  openConfirmDelete({
+    id: evalId,
+    name: employeeName,
+    title: 'حذف تقييم',
+    confirmLabel: 'نعم، احذف التقييم',
+    async onConfirm() {
+      await $api(`/apps/evaluation-periods/${activePeriod.value!.id}/evaluations/${evalId}`, {
+        method: 'DELETE',
+      })
+      showSnackbar('تم حذف التقييم بنجاح')
+      fetchData()
+    },
+  })
 }
 
 const gradeColor = (grade: string) => {
@@ -514,7 +520,7 @@ const openPrintDialog = (ev: any) => {
                   
                   <template v-else>
                     <VBtn v-if="$can('update', 'Evaluation')" icon variant="text" size="small" color="primary" @click="openEvalDialog(item)"><VIcon icon="tabler-edit" /></VBtn>
-                    <VBtn v-if="$can('delete', 'Evaluation')" icon variant="text" size="small" color="error" @click="deleteEvaluation(item.evaluation.id!)"><VIcon icon="tabler-trash" /></VBtn>
+                    <VBtn v-if="$can('delete', 'Evaluation')" icon variant="text" size="small" color="error" @click="deleteEvaluation(item.evaluation.id!, item.employeeName)"><VIcon icon="tabler-trash" /></VBtn>
                   </template>
                 </template>
 
