@@ -13,6 +13,34 @@ const formatDate = (date: string) => {
   return new Date(date).toLocaleDateString('ar-EG')
 }
 
+// Points calculation maps (same as AddEvaluationDialog.vue)
+const degreePointsMap: Record<string, number> = {
+  'أولى': 25, 'ثانية': 24, 'ثالثة': 23, 'رابعة': 22, 'خامسة': 21,
+  'سادسة': 20, 'سابعة': 19, 'ثامنة': 18, 'تاسعة': 17, 'عاشرة': 16,
+}
+
+const educationPointsMap: Record<string, number> = {
+  'دكتوراه': 15, 'ماجستير': 12, 'بكالوريوس': 10,
+  'دبلوم عالي': 7, 'دبلوم': 5, 'شهادة إعدادية': 3, 'شهادة ابتدائية': 1,
+}
+
+const serviceYearsPointsMap: Record<string, number> = {
+  'أقل من سنة': 1, '1-5 سنوات': 3, '6-10 سنوات': 5,
+  '11-15 سنة': 6, '16-20 سنة': 7, 'أكثر من 20 سنة': 7,
+}
+
+const getDegreePoints = (degree: string | undefined): number => degreePointsMap[degree || ''] || 0
+const getEducationPoints = (edu: string | undefined): number => educationPointsMap[edu || ''] || 0
+
+const getServiceYearsPoints = (sy: number | string | undefined): number => {
+  const n = typeof sy === 'string' ? parseFloat(sy) : (sy ?? 0)
+  if (n < 1) return 1
+  if (n <= 5) return 3
+  if (n <= 10) return 5
+  if (n <= 15) return 6
+  return 7
+}
+
 const periodicLabels = [
   'كانون الثاني وشباط',
   'آذار ونيسان',
@@ -25,6 +53,35 @@ const periodicLabels = [
 // Map period_no to index in our table
 const getPeriodData = (periodNo: number) => {
   return props.allEvaluations?.find(e => e.periodNo === periodNo)
+}
+
+// Qualitative criteria points (same as dialog)
+const qualPointsMap: Record<string, number> = {
+  'بلا تقييم': 0,
+  'ممتاز': 7,
+  'جيد جداً': 6,
+  'جيد': 5,
+  'متوسط': 4,
+  'ضعيف': 3,
+}
+
+const getQualPoints = (val: string | undefined) => qualPointsMap[val || ''] || 0
+
+const getPeriodTotal = (ev: any) => {
+  return getQualPoints(ev.efficiencyExperience)
+    + getQualPoints(ev.speedOfAchievement)
+    + getQualPoints(ev.senseOfResponsibility)
+    + getQualPoints(ev.behaviorWithOthers)
+    + getQualPoints(ev.attendanceCommitment)
+}
+
+const getPeriodGrade = (ev: any) => {
+  const total = getPeriodTotal(ev)
+  if (total >= 30) return 'ممتاز'
+  if (total >= 25) return 'جيد جداً'
+  if (total >= 20) return 'جيد'
+  if (total >= 15) return 'مقبول'
+  return 'ضعيف'
 }
 </script>
 
@@ -42,13 +99,24 @@ const getPeriodData = (periodNo: number) => {
       <VCol cols="4"><strong>رقم التسلسل:</strong> {{ evaluation.employeeNo }}</VCol>
       <VCol cols="4"><strong>تاريخ التقرير:</strong> {{ formatDate(evaluation.createdAt) }}</VCol>
       <VCol cols="4"><strong>القسم / الفرع:</strong> {{ evaluation.branchName }}</VCol>
-      
+
       <VCol cols="6"><strong>اسم الموظف الكامل:</strong> {{ evaluation.employeeName }}</VCol>
       <VCol cols="6"><strong>عنوان الوظيفة:</strong> {{ evaluation.rank || '-' }}</VCol>
-      
+
+      <VCol cols="4"><strong>المنصب الإداري:</strong> {{ evaluation.adminPosition || '-' }}</VCol>
       <VCol cols="4"><strong>التحصيل العلمي:</strong> {{ evaluation.education || '-' }}</VCol>
-      <VCol cols="4"><strong>مدة الخدمة:</strong> {{ evaluation.serviceYears || '-' }} سنة</VCol>
       <VCol cols="4"><strong>الدرجة الوظيفية:</strong> {{ evaluation.degree || '-' }}</VCol>
+
+      <VCol cols="4"><strong>مدة الخدمة:</strong> {{ evaluation.serviceDuration || evaluation.serviceYears || '-' }}</VCol>
+    </VRow>
+
+    <!-- Section 1b: Points Summary -->
+    <div class="section-title">تفاصيل النقاط</div>
+    <VRow class="mb-6 info-grid">
+      <VCol cols="3"><strong>الدرجة:</strong> {{ getDegreePoints(evaluation.degree) }} نقطة</VCol>
+      <VCol cols="3"><strong>الشهادة:</strong> {{ getEducationPoints(evaluation.education) }} نقطة</VCol>
+      <VCol cols="3"><strong>سنوات الخدمة:</strong> {{ getServiceYearsPoints(evaluation.serviceYears) }} نقطة</VCol>
+      <VCol cols="3"><strong>المجموع:</strong> {{ getDegreePoints(evaluation.degree) + getEducationPoints(evaluation.education) + getServiceYearsPoints(evaluation.serviceYears) }} نقطة</VCol>
     </VRow>
 
     <!-- Section 2: Performance Evaluation Table -->
@@ -77,10 +145,11 @@ const getPeriodData = (periodNo: number) => {
       <thead>
         <tr>
           <th>الفترة</th>
-          <th class="text-center">ن. الكفاءة</th>
-          <th class="text-center">ن. العنوان</th>
-          <th class="text-center">ن. الشهادة</th>
-          <th class="text-center">ن. الخدمة</th>
+          <th class="text-center">الكفاءة</th>
+          <th class="text-center">الإنجاز</th>
+          <th class="text-center">المسؤولية</th>
+          <th class="text-center">السلوك</th>
+          <th class="text-center">الالتزام</th>
           <th class="text-center">المجموع</th>
           <th class="text-center">التقييم</th>
         </tr>
@@ -89,15 +158,16 @@ const getPeriodData = (periodNo: number) => {
         <tr v-for="(label, idx) in periodicLabels" :key="idx">
           <td>{{ label }}</td>
           <template v-if="getPeriodData(idx + 1)">
-            <td class="text-center">{{ getPeriodData(idx + 1).pointsCompetency }}</td>
-            <td class="text-center">{{ getPeriodData(idx + 1).pointsGrade }}</td>
-            <td class="text-center">{{ getPeriodData(idx + 1).pointsEducation }}</td>
-            <td class="text-center">{{ getPeriodData(idx + 1).pointsService }}</td>
-            <td class="text-center font-weight-bold">{{ getPeriodData(idx + 1).pointsTotal }}</td>
-            <td class="text-center">{{ getPeriodData(idx + 1).grade }}</td>
+            <td class="text-center">{{ getQualPoints(getPeriodData(idx + 1).efficiencyExperience) }}</td>
+            <td class="text-center">{{ getQualPoints(getPeriodData(idx + 1).speedOfAchievement) }}</td>
+            <td class="text-center">{{ getQualPoints(getPeriodData(idx + 1).senseOfResponsibility) }}</td>
+            <td class="text-center">{{ getQualPoints(getPeriodData(idx + 1).behaviorWithOthers) }}</td>
+            <td class="text-center">{{ getQualPoints(getPeriodData(idx + 1).attendanceCommitment) }}</td>
+            <td class="text-center font-weight-bold">{{ getPeriodTotal(getPeriodData(idx + 1)) }}</td>
+            <td class="text-center">{{ getPeriodGrade(getPeriodData(idx + 1)) }}</td>
           </template>
           <template v-else>
-            <td v-for="n in 6" :key="n" class="text-center text-disabled">-</td>
+            <td v-for="n in 7" :key="n" class="text-center text-disabled">-</td>
           </template>
         </tr>
       </tbody>

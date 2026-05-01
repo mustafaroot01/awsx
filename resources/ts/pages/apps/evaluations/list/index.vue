@@ -305,10 +305,23 @@ const confirmLock = async () => {
 import EmployeeEvaluationForm from '@/views/apps/evaluations/EmployeeEvaluationForm.vue'
 const isPrintDialogOpen = ref(false)
 const selectedEvalForPrint = ref<any>(null)
+const allEvaluationsForPrint = ref<any[]>([])
 
-const openPrintDialog = (ev: any) => {
+const openPrintDialog = async (ev: any) => {
   selectedEvalForPrint.value = ev
+  allEvaluationsForPrint.value = []
   isPrintDialogOpen.value = true
+
+  // Fetch all evaluations for this employee across all periods in the same year
+  try {
+    const year = ev.year ?? activePeriod.value?.year
+    if (year && ev.employeeId) {
+      const data = await $api<any>(`/apps/evaluations?year=${year}&employeeId=${ev.employeeId}`)
+      allEvaluationsForPrint.value = data?.evaluations ?? []
+    }
+  } catch (e) {
+    console.error('Failed to fetch all evaluations for print:', e)
+  }
 }
 </script>
 
@@ -330,7 +343,7 @@ const openPrintDialog = (ev: any) => {
               v-for="period in periods"
               :key="period.id"
               :active="activePeriod?.id === period.id"
-              active-color="primary"
+              color="primary"
               class="mb-1 rounded-lg border-opacity-25"
               :class="activePeriod?.id === period.id ? 'border-primary' : 'border'"
               @click="openPeriod(period)"
@@ -589,7 +602,7 @@ const openPrintDialog = (ev: any) => {
     
     <VDialog v-model="isPrintDialogOpen" max-width="900">
       <VCard class="rounded-xl">
-        <VCardText class="pa-0"><EmployeeEvaluationForm v-if="selectedEvalForPrint" :evaluation="selectedEvalForPrint" /></VCardText>
+        <VCardText class="pa-0"><EmployeeEvaluationForm v-if="selectedEvalForPrint" :evaluation="selectedEvalForPrint" :all-evaluations="allEvaluationsForPrint" /></VCardText>
         <VCardText class="d-flex justify-end gap-3 pa-4 border-t">
           <VBtn color="primary" prepend-icon="tabler-printer" @click="window.print()">طباعة الاستمارة</VBtn>
           <VBtn color="secondary" variant="tonal" @click="isPrintDialogOpen = false">إغلاق</VBtn>

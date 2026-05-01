@@ -22,6 +22,7 @@ declare module 'vue-router/auto-routes' {
     'access-control': RouteRecordInfo<'access-control', '/access-control', Record<never, never>, Record<never, never>>,
     'apps-branches-comparison': RouteRecordInfo<'apps-branches-comparison', '/apps/branches/comparison', Record<never, never>, Record<never, never>>,
     'apps-branches-list': RouteRecordInfo<'apps-branches-list', '/apps/branches/list', Record<never, never>, Record<never, never>>,
+    'apps-employees-admin-positions': RouteRecordInfo<'apps-employees-admin-positions', '/apps/employees/admin-positions', Record<never, never>, Record<never, never>>,
     'apps-employees-incentives': RouteRecordInfo<'apps-employees-incentives', '/apps/employees/incentives', Record<never, never>, Record<never, never>>,
     'apps-employees-list': RouteRecordInfo<'apps-employees-list', '/apps/employees/list', Record<never, never>, Record<never, never>>,
     'apps-employees-ranks': RouteRecordInfo<'apps-employees-ranks', '/apps/employees/ranks', Record<never, never>, Record<never, never>>,

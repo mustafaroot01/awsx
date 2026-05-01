@@ -21,9 +21,15 @@ class ProductionPlanController extends Controller
             $query->where('year', $year);
         }
 
+        // Filter by branch for branch managers
         if (auth()->check() && auth()->user()->branch_id) {
             $branchId = auth()->user()->branch_id;
             $query->whereHas('branchTargets', fn($q) => $q->where('branch_id', $branchId));
+        }
+
+        // Filter by branch from query param (for admin viewing specific branch)
+        if ($requestBranchId = $request->get('branchId')) {
+            $query->whereHas('branchTargets', fn($q) => $q->where('branch_id', $requestBranchId));
         }
 
         $plans = $query->orderBy('year', 'desc')->get();

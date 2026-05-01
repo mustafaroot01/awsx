@@ -21,6 +21,7 @@ class Employee extends Model
         'address',
         'degree',
         'rank',
+        'admin_position',
         'education',
         'gender',
         'job_type',

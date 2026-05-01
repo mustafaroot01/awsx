@@ -3,6 +3,9 @@ import AddNewBranchDrawer from '@/views/apps/branches/list/AddNewBranchDrawer.vu
 import type { Branch, BranchWithNames } from '@db/apps/branches/types'
 import { showPermissionError } from '@/utils/api'
 import { useConfirmDelete } from '@/composables/useConfirmDelete'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 
 definePage({
   meta: {
@@ -102,6 +105,15 @@ const saveBranch = async (branchData: Branch) => {
       const errorDetail = err.response?._data?.message || err.message || 'خطأ غير معروف'
       showNotification(`فشل الحفظ: ${errorDetail}`, 'error')
     }
+  }
+}
+
+const goToBranchPlan = async (branchId: number) => {
+  try {
+    const res = await $api(`/apps/branches/${branchId}/production-plan`)
+    router.push(`/apps/production-plans/${res.planId}`)
+  } catch {
+    router.push({ path: '/apps/production-plans/list', query: { branchId } })
   }
 }
 
@@ -309,7 +321,7 @@ const deleteBranch = (branch: BranchWithNames) => {
             <VMenu activator="parent">
               <VList>
                 <!-- عرض الموظفين -->
-                <VListItem :to="{ path: '/apps/user/list', query: { branch: item.id } }">
+                <VListItem :to="{ path: '/apps/employees/list', query: { branchId: item.id } }">
                   <template #prepend>
                     <VIcon icon="tabler-users" color="primary" />
                   </template>
@@ -317,7 +329,7 @@ const deleteBranch = (branch: BranchWithNames) => {
                 </VListItem>
 
                 <!-- خطة الإنتاج -->
-                <VListItem :to="{ path: '/apps/evaluations/list', query: { branchId: item.id } }">
+                <VListItem @click="goToBranchPlan(item.id)">
                   <template #prepend>
                     <VIcon icon="tabler-chart-bar" color="success" />
                   </template>

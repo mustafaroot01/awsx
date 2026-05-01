@@ -23,7 +23,18 @@ class EvaluationResource extends JsonResource
             'degree'           => $emp?->degree,
             'rank'             => $emp?->rank,
             'education'        => $emp?->education,
-            'serviceYears'     => $emp?->hire_date?->diffInYears(now()),
+            'serviceYears'     => $emp?->hire_date ? round($emp->hire_date->diffInYears(now()), 1) : null,
+            'serviceDuration'  => $emp?->hire_date
+                ? (function () use ($emp) {
+                    $diff = $emp->hire_date->diff(now());
+                    $parts = [];
+                    if ($diff->y > 0) $parts[] = $diff->y . ' سنة';
+                    if ($diff->m > 0) $parts[] = $diff->m . ' شهر';
+                    if ($diff->d > 0) $parts[] = $diff->d . ' يوم';
+                    return implode(' و ', $parts) ?: 'أقل من يوم';
+                })()
+                : null,
+            'adminPosition'    => $emp?->admin_position,
             'year'             => $this->period?->year,
             'periodNo'         => $this->period?->period_no,
             'createdAt'        => $this->created_at,

@@ -9,12 +9,13 @@ const navigation = [
   },
   {
     title: 'الموارد البشرية',
-    icon: { icon: 'tabler-users' },
+    icon: { icon: 'tabler-users-group' },
     action: 'read',
     subject: 'Employee',
     children: [
       { title: 'الموظفون', to: 'apps-employees-list', action: 'read', subject: 'Employee' },
       { title: 'العناوين الوظيفية', to: 'apps-employees-ranks', action: 'read', subject: 'Employee' },
+      { title: 'العناوين الإدارية', to: 'apps-employees-admin-positions', action: 'read', subject: 'Employee' },
     ],
   },
   {

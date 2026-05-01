@@ -5,7 +5,10 @@ import ExportFieldsDialog from '@/views/apps/employees/list/ExportFieldsDialog.v
 import type { Employee } from '@db/apps/employees/types'
 import { showPermissionError } from '@/utils/api'
 import { useConfirmDelete } from '@/composables/useConfirmDelete'
+import { useRoute } from 'vue-router'
 import * as XLSX from 'xlsx'
+
+const route = useRoute()
 
 definePage({
   meta: {
@@ -20,6 +23,10 @@ const selectedGender = ref()
 const selectedJobType = ref()
 const selectedDegree = ref()
 const selectedEmployeeType = ref()
+const branchIdFromQuery = computed(() => {
+  const b = route.query.branchId
+  return b ? Number(b) : undefined
+})
 
 // 👉 Data Table Options
 const itemsPerPage = ref(10)
@@ -64,6 +71,7 @@ const { data: employeesData, execute: fetchEmployees } = await useApi<any>(creat
     jobType: selectedJobType,
     degree: selectedDegree,
     employeeType: selectedEmployeeType,
+    branchId: branchIdFromQuery,
     itemsPerPage,
     page,
     sortBy,

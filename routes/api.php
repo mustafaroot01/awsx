@@ -7,6 +7,7 @@ use App\Http\Controllers\EvaluationPeriodController;
 use App\Http\Controllers\PolicyController;
 use App\Http\Controllers\ProductionPlanController;
 use App\Http\Controllers\RankController;
+use App\Http\Controllers\AdminPositionController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\SettingController;
@@ -86,9 +87,19 @@ Route::middleware('auth:api')->group(function () {
         'destroy' => 'permission:delete.Employee',
     ]);
 
+    // ── Admin Positions ───────────────────────────────────────────
+    Route::apiResource('apps/admin-positions', AdminPositionController::class)->middleware([
+        'index'   => 'permission:read.Employee',
+        'show'    => 'permission:read.Employee',
+        'store'   => 'permission:update.Employee',
+        'update'  => 'permission:update.Employee',
+        'destroy' => 'permission:delete.Employee',
+    ]);
+
     // ── Branches ──────────────────────────────────────────────────
     Route::get('/apps/branches/comparison',   [BranchController::class, 'comparison']) ->middleware('permission:read.Statistics');
     Route::get('/apps/branches/roi-analysis', [BranchController::class, 'roiAnalysis'])->middleware('permission:read.Statistics');
+    Route::get('/apps/branches/{branch}/production-plan', [BranchController::class, 'productionPlan'])->middleware('permission:read.ProductionPlan');
     Route::apiResource('apps/branches', BranchController::class)->middleware([
         'index'   => 'permission:read.Branch',
         'show'    => 'permission:read.Branch',
@@ -123,6 +134,7 @@ Route::middleware('auth:api')->group(function () {
     ]);
 
     // ── Evaluations ───────────────────────────────────────────────
+    Route::get('/apps/evaluations',                                                        [EvaluationPeriodController::class, 'allEvaluations']) ->middleware('permission:read.Evaluation');
     Route::get('/apps/evaluation-periods/active',                                          [EvaluationPeriodController::class, 'active']);
     Route::get('/apps/evaluation-periods/{evaluation_period}/evaluations',                 [EvaluationPeriodController::class, 'evaluations'])   ->middleware('permission:read.Evaluation');
     Route::post('/apps/evaluation-periods/{evaluation_period}/evaluations',                [EvaluationPeriodController::class, 'storeEvaluation'])->middleware('permission:create.Evaluation');

@@ -1,19 +1,24 @@
 <script setup lang="ts">
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import type { ProductionPlan } from '@db/apps/production-plans/types'
 import { showPermissionError } from '@/utils/api'
 import { useConfirmDelete } from '@/composables/useConfirmDelete'
 
 const router = useRouter()
+const route = useRoute()
 
 definePage({
   meta: { action: 'read', subject: 'ProductionPlan' },
 })
 
 const selectedYear = ref<number | undefined>(undefined)
+const branchIdFromQuery = computed(() => {
+  const b = route.query.branchId
+  return b ? Number(b) : undefined
+})
 
 const { data: plansData, execute: fetchPlans } = await useApi<any>(createUrl('/apps/production-plans', {
-  query: { year: selectedYear },
+  query: { year: selectedYear, branchId: branchIdFromQuery },
 }))
 
 const plans = computed((): ProductionPlan[] => plansData.value?.plans ?? [])

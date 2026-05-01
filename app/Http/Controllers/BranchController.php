@@ -50,6 +50,23 @@ class BranchController extends Controller
         return response()->json(new BranchResource($branch));
     }
 
+    public function productionPlan(Branch $branch): JsonResponse
+    {
+        $plan = \App\Models\ProductionPlan::whereHas('branchTargets', fn($q) => $q->where('branch_id', $branch->id))
+            ->orderBy('year', 'desc')
+            ->first();
+
+        if (!$plan) {
+            return response()->json(['message' => 'لا توجد خطة إنتاجية لهذا الفرع'], 404);
+        }
+
+        return response()->json([
+            'planId' => $plan->id,
+            'title'  => $plan->title,
+            'year'   => $plan->year,
+        ]);
+    }
+
     private function validateManagerConflict(?int $managerId, ?int $deputyId, ?int $excludeBranchId = null): ?array
     {
         if ($managerId && $managerId === $deputyId) {

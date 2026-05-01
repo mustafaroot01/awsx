@@ -19,6 +19,11 @@ class EmployeeController extends Controller
             $query->where('branch_id', auth()->user()->branch_id);
         }
 
+        // Filter by branch from query param (for admin viewing specific branch)
+        if ($requestBranchId = $request->get('branchId')) {
+            $query->where('branch_id', $requestBranchId);
+        }
+
         if ($q = $request->get('q')) {
             $query->where(function ($sub) use ($q) {
                 $sub->where('first_name', 'LIKE', "%{$q}%")
@@ -189,6 +194,7 @@ class EmployeeController extends Controller
             'address'       => $request->input('address'),
             'degree'        => $request->input('degree'),
             'rank'          => $request->input('rank'),
+            'admin_position'  => $request->input('adminPosition'),
             'education'     => $request->input('education'),
             'gender'        => $request->input('gender'),
             'job_type'      => $request->input('jobType'),
@@ -226,6 +232,7 @@ class EmployeeController extends Controller
                 'address'       => $request->input('address'),
                 'degree'        => $request->input('degree'),
                 'rank'          => $request->input('rank'),
+                'admin_position'  => $request->input('adminPosition'),
                 'education'     => $request->input('education'),
                 'gender'        => $request->input('gender'),
                 'job_type'      => $request->input('jobType'),
@@ -390,6 +397,16 @@ class EmployeeController extends Controller
                 $query->whereYear('issue_date', $year);
             }]);
 
+        // Show only producers and admin-producers (exclude pure admins)
+        $query->where(function ($q) {
+            $q->where('job_track', 'producer')
+              ->orWhere(function ($sq) {
+                  $sq->where('job_track', 'admin')
+                     ->whereNotNull('production_no')
+                     ->where('production_no', '!=', '');
+              });
+        });
+
         // Branch filter
         $userBranchId = (auth()->check() && auth()->user()->branch_id) ? auth()->user()->branch_id : $branchId;
         if ($userBranchId) {
@@ -401,6 +418,7 @@ class EmployeeController extends Controller
             ->get();
 
         return response()->json($topEmployees->map(function($emp) {
+            $isAdminProducer = $emp->job_track === 'admin' && !empty($emp->production_no);
             return [
                 'id'          => $emp->id,
                 'fullName'    => $emp->full_name,
@@ -408,6 +426,8 @@ class EmployeeController extends Controller
                 'totalAmount' => (float) ($emp->policies_sum_amount ?? 0),
                 'totalCount'  => $emp->policies_count,
                 'avatar'      => $emp->avatar,
+                'type'        => $isAdminProducer ? 'admin_producer' : 'producer',
+                'typeLabel'   => $isAdminProducer ? 'إداري منتج' : 'منتج',
             ];
         }));
     }

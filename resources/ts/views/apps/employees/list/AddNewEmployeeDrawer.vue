@@ -30,6 +30,7 @@ const fourthName = ref('')
 const lastName = ref('')
 const degree = ref<string>()
 const rank = ref<string>()
+const adminPosition = ref<string>()
 const jobTrack = ref<'producer' | 'admin' | null>(null)
 const education = ref<string>()
 const gender = ref<'male' | 'female'>()
@@ -49,6 +50,7 @@ const degrees = [
 ]
 
 const rankOptions = ref<{ title: string; value: string; name: string; type: string }[]>([])
+const adminPositionOptions = ref<{ title: string; value: string }[]>([])
 
 const producerRanks = computed(() =>
   rankOptions.value.filter(r => r.type === 'producer').map(r => r.name)
@@ -88,6 +90,7 @@ const fillForm = (emp: Employee) => {
   lastName.value = emp.lastName
   degree.value = emp.degree
   rank.value = emp.rank
+  adminPosition.value = emp.adminPosition
   jobTrack.value = emp.jobTrack ?? (producerRanks.value.includes(emp.rank ?? '') ? 'producer'
     : adminRanks.value.includes(emp.rank ?? '') ? 'admin'
     : null)
@@ -142,6 +145,18 @@ watch(() => props.isDialogVisible, async open => {
       rankOptions.value = []
     }
 
+    // Fetch active admin positions from API
+    try {
+      const positionsRes = await $api<any>('/apps/admin-positions?active=true')
+      const positionsArray = Array.isArray(positionsRes) ? positionsRes : positionsRes?.data ?? positionsRes?.positions ?? []
+      adminPositionOptions.value = positionsArray.map((p: any) => ({
+        title: p.name,
+        value: p.name,
+      }))
+    } catch {
+      adminPositionOptions.value = []
+    }
+
     if (props.employeeToEdit)
       fillForm(props.employeeToEdit)
   }
@@ -161,6 +176,7 @@ const closeDialog = () => {
     branchId.value = null
     jobTrack.value = null
     rank.value = undefined
+    adminPosition.value = undefined
   })
 }
 
@@ -176,6 +192,7 @@ const onSubmit = () => {
         lastName: lastName.value,
         degree: degree.value ?? '',
         rank: rank.value,
+        adminPosition: adminPosition.value ?? '',
         education: education.value ?? '',
         gender: gender.value ?? 'male',
         jobType: jobType.value ?? 'permanent',
@@ -422,6 +439,17 @@ const dialogModelValueUpdate = (val: boolean) => {
                   label="العنوان الوظيفي *"
                   :placeholder="!jobTrack ? 'حدد نوع الموظف أولاً' : 'اختر العنوان الوظيفي'"
                   :items="filteredRankOptions"
+                />
+              </VCol>
+
+              <!-- المنصب الإداري -->
+              <VCol cols="12" md="6">
+                <AppSelect
+                  v-model="adminPosition"
+                  :rules="[requiredValidator]"
+                  label="المنصب الإداري *"
+                  placeholder="اختر المنصب الإداري"
+                  :items="adminPositionOptions"
                 />
               </VCol>
 

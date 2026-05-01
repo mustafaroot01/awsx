@@ -32,6 +32,35 @@ class EvaluationPeriodController extends Controller
         ]);
     }
 
+    public function allEvaluations(Request $request): JsonResponse
+    {
+        $query = Evaluation::with(['employee', 'branch', 'period']);
+
+        // Branch manager filter
+        if (auth()->check() && auth()->user()->branch_id) {
+            $query->where('branch_id', auth()->user()->branch_id);
+        }
+
+        if ($year = $request->get('year')) {
+            $query->whereHas('period', fn($q) => $q->where('year', $year));
+        }
+
+        if ($employeeId = $request->get('employeeId')) {
+            $query->where('employee_id', $employeeId);
+        }
+
+        if ($periodId = $request->get('periodId')) {
+            $query->where('period_id', $periodId);
+        }
+
+        $evaluations = $query->orderBy('created_at', 'desc')->get();
+
+        return response()->json([
+            'evaluations' => EvaluationResource::collection($evaluations),
+            'total'       => $evaluations->count(),
+        ]);
+    }
+
     public function index(Request $request): JsonResponse
     {
         $query = EvaluationPeriod::with(['branches'])->withCount('evaluations');
