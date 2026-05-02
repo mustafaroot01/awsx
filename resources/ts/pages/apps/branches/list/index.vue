@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import AddNewBranchDrawer from '@/views/apps/branches/list/AddNewBranchDrawer.vue'
+import ExportFieldsDialog from '@/views/apps/employees/list/ExportFieldsDialog.vue'
 import type { Branch, BranchWithNames } from '@db/apps/branches/types'
 import { showPermissionError } from '@/utils/api'
 import { useConfirmDelete } from '@/composables/useConfirmDelete'
 import { useRouter } from 'vue-router'
+import * as XLSX from 'xlsx'
 
 const router = useRouter()
 
@@ -114,6 +116,93 @@ const goToBranchPlan = async (branchId: number) => {
     router.push(`/apps/production-plans/${res.planId}`)
   } catch {
     router.push({ path: '/apps/production-plans/list', query: { branchId } })
+  }
+}
+
+// 👉 Export
+const exportFields = [
+  { key: 'name', title: 'اسم الفرع', default: true },
+  { key: 'short_name', title: 'الاسم المختصر', default: true },
+  { key: 'location', title: 'المكان', default: true },
+  { key: 'governorate', title: 'المحافظة', default: true },
+  { key: 'managerName', title: 'مدير الفرع', default: true },
+  { key: 'deputyName', title: 'المعاون', default: true },
+  { key: 'employees_count', title: 'عدد الموظفين', default: false },
+  { key: 'insurance_no', title: 'رقم التأمين', default: false },
+]
+
+const isExportDialogVisible = ref(false)
+
+const openExportDialog = () => {
+  isExportDialogVisible.value = true
+}
+
+const handleExport = (type: 'pdf' | 'excel', selectedFields: string[]) => {
+  if (type === 'excel')
+    exportToExcel(selectedFields)
+  else
+    exportToPDF(selectedFields)
+}
+
+const exportToExcel = (selectedFields: string[]) => {
+  const allFieldsMap: Record<string, (b: BranchWithNames) => [string, string]> = {
+    name: b => ['اسم الفرع', b.name || ''],
+    short_name: b => ['الاسم المختصر', b.short_name || ''],
+    location: b => ['المكان', b.location || ''],
+    governorate: b => ['المحافظة', b.governorate || ''],
+    managerName: b => ['مدير الفرع', b.managerName || ''],
+    deputyName: b => ['المعاون', b.deputyName || ''],
+    employees_count: b => ['عدد الموظفين', String(b.employees_count ?? '')],
+    insurance_no: b => ['رقم التأمين', b.insurance_no || ''],
+  }
+
+  const data = branches.value.map(b => {
+    const obj: Record<string, string> = {}
+    selectedFields.forEach(key => {
+      const [label, value] = allFieldsMap[key](b)
+      obj[label] = value
+    })
+    return obj
+  })
+
+  const ws = XLSX.utils.json_to_sheet(data)
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'الفروع')
+  XLSX.writeFile(wb, `الفروع_${new Date().toISOString().split('T')[0]}.xlsx`)
+}
+
+const exportToPDF = async (selectedFields: string[]) => {
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || '/api'
+  const params = new URLSearchParams()
+  if (searchQuery.value) params.append('q', searchQuery.value)
+  if (selectedGovernorate.value) params.append('governorate', selectedGovernorate.value)
+  params.append('fields', selectedFields.join(','))
+
+  const accessToken = useCookie('accessToken').value
+  const url = `${baseUrl}/apps/branches/export-pdf?${params.toString()}`
+
+  try {
+    const response = await fetch(url, {
+      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+    })
+
+    if (!response.ok) {
+      showNotification('فشل تصدير PDF', 'error')
+      return
+    }
+
+    const blob = await response.blob()
+    const downloadUrl = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = downloadUrl
+    a.download = `قائمة_الفروع_${new Date().toISOString().split('T')[0]}.pdf`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    window.URL.revokeObjectURL(downloadUrl)
+  }
+  catch {
+    showNotification('فشل تصدير PDF', 'error')
   }
 }
 
@@ -238,7 +327,9 @@ const deleteBranch = (branch: BranchWithNames) => {
           <VBtn
             variant="tonal"
             color="secondary"
+            size="small"
             prepend-icon="tabler-upload"
+            @click="openExportDialog"
           >
             تصدير
           </VBtn>
@@ -374,6 +465,12 @@ const deleteBranch = (branch: BranchWithNames) => {
       v-model:is-drawer-open="isBranchDrawerVisible"
       :branch-to-edit="selectedBranch"
       @branch-data="saveBranch"
+    />
+
+    <ExportFieldsDialog
+      v-model="isExportDialogVisible"
+      :fields="exportFields"
+      @export="handleExport"
     />
   </section>
 </template>
