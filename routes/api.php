@@ -38,7 +38,7 @@ Route::post('/auth/login', [AuthController::class, 'login']);
 Route::get('/auth/login', function () {
     return response()->json(['message' => 'Unauthenticated'], 401);
 })->name('login');
-Route::post('/auth/logout', [AuthController::class, 'logout']);
+Route::post('/auth/logout', [AuthController::class, 'logout'])->middleware('auth:api');
 Route::get('/auth/debug-rules',   [AuthController::class, 'debugRules'])->middleware('auth:api');
 Route::get('/auth/refresh-rules', [AuthController::class, 'refreshRules'])->middleware('auth:api');
 

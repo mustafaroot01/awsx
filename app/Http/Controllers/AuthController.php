@@ -65,8 +65,9 @@ class AuthController extends Controller
                 $rules = [['action' => 'manage', 'subject' => 'all']];
             }
 
-            $token = bin2hex(random_bytes(40));
-            $user->forceFill(['api_token' => $token])->save();
+            // Create a unique Sanctum token per device/session (supports multi-device login)
+            $deviceName = $request->userAgent() ?? 'unknown';
+            $token = $user->createToken($deviceName)->plainTextToken;
 
             return response()->json([
                 'accessToken'      => $token,
@@ -89,8 +90,13 @@ class AuthController extends Controller
         }
     }
 
-    public function logout(): JsonResponse
+    public function logout(Request $request): JsonResponse
     {
+        // Revoke only the current token (this device), keep other devices logged in
+        $token = $request->user()?->currentAccessToken();
+        if ($token) {
+            $token->delete();
+        }
         return response()->json(['message' => 'تم تسجيل الخروج بنجاح']);
     }
 
