@@ -10,9 +10,91 @@ use App\Models\ProductionPlanCategory;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Mpdf\Mpdf;
 
 class ProductionPlanController extends Controller
 {
+    public function exportDetailedPDF(ProductionPlan $productionPlan)
+    {
+        $productionPlan->load(['categories', 'branchTargets.branch']);
+        $achievements = $this->calculateAchievements($productionPlan->id);
+
+        $data = [
+            'plan' => $productionPlan,
+            'achievements' => $achievements,
+            'date' => now()->format('Y-m-d H:i'),
+        ];
+
+        $html = view('production-plans.detailed-pdf', $data)->render();
+
+        $mpdf = new Mpdf([
+            'mode' => 'utf-8',
+            'format' => 'A4-L',
+            'default_font' => 'dejavusans',
+            'directionality' => 'rtl',
+            'autoScriptToLang' => true,
+            'autoLangToFont' => true,
+        ]);
+
+        $mpdf->WriteHTML($html);
+
+        return response($mpdf->Output("detailed-plan-{$productionPlan->year}.pdf", 'S'))
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', 'attachment; filename="detailed-plan-'.$productionPlan->year.'.pdf"');
+    }
+
+    public function exportPDF(Request $request)
+    {
+        $fields = explode(',', $request->get('fields', 'year,title,total_amount,is_locked'));
+        $query = ProductionPlan::with(['branchTargets.branch', 'categories']);
+
+        if ($year = $request->get('year')) {
+            $query->where('year', $year);
+        }
+
+        $plans = $query->orderBy('year', 'desc')->get();
+
+        $headers = [];
+        $allHeaders = [
+            'year'         => 'السنة',
+            'title'        => 'العنوان',
+            'total_amount' => 'إجمالي الخطة',
+            'branches'     => 'تفاصيل الفروع',
+            'is_locked'    => 'الحالة',
+        ];
+
+        foreach ($fields as $f) {
+            if (isset($allHeaders[$f])) {
+                $headers[$f] = $allHeaders[$f];
+            }
+        }
+
+        $data = [
+            'title'   => 'قائمة الخطط الإنتاجية',
+            'date'    => now()->format('Y-m-d'),
+            'headers' => $headers,
+            'items'   => $plans,
+            'fields'  => $fields,
+        ];
+
+        $html = view('production-plans.pdf', $data)->render();
+
+        $mpdf = new Mpdf([
+            'mode' => 'utf-8',
+            'format' => 'A4-L',
+            'default_font' => 'dejavusans',
+            'directionality' => 'rtl',
+            'autoScriptToLang' => true,
+            'autoLangToFont' => true,
+        ]);
+
+        $mpdf->WriteHTML($html);
+
+        return response($mpdf->Output('production-plans.pdf', 'S'))
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', 'attachment; filename="production-plans.pdf"');
+    }
+
     public function index(Request $request): JsonResponse
     {
         $query = ProductionPlan::with(['categories', 'branchTargets.branch']);

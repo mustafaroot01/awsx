@@ -5,9 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use App\Traits\LogsActivity;
 
 class Policy extends Model
 {
+    use LogsActivity;
     // Category → production plan group mapping (for target vs achieved tracking)
     public const PLAN_CATEGORY_MAP = [
         'life'              => 'life',

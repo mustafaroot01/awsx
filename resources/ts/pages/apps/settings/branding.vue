@@ -23,6 +23,7 @@ const saveSettings = async () => {
   const formData = new FormData()
   formData.append('app_name', settings.value.app_name || '')
   formData.append('footer_text', settings.value.footer_text || '')
+  formData.append('logs_retention_days', settings.value.logs_retention_days || '30')
   
   if (logoFile.value) {
     // Vuetify 3 VFileInput returns an array even for single selection
@@ -81,6 +82,18 @@ const saveSettings = async () => {
                 v-model="settings.footer_text"
                 label="نص التذييل (Footer)"
                 rows="2"
+              />
+            </VCol>
+
+            <VCol cols="12">
+              <VDivider class="my-4" />
+              <h6 class="text-h6 mb-4">إعدادات النظام</h6>
+              <AppTextField
+                v-model="settings.logs_retention_days"
+                type="number"
+                label="فترة الاحتفاظ بسجل النشاط (بالأيام)"
+                hint="سيتم حذف السجلات الأقدم من هذا العدد تلقائياً"
+                persistent-hint
               />
             </VCol>
 

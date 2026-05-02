@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use App\Models\ActivityLog;
 
 class AuthController extends Controller
 {
@@ -69,6 +70,14 @@ class AuthController extends Controller
             $deviceName = $request->userAgent() ?? 'unknown';
             $token = $user->createToken($deviceName)->plainTextToken;
 
+            // Log activity
+            ActivityLog::create([
+                'user_id' => $user->id,
+                'action'  => 'login',
+                'description' => 'تم تسجيل الدخول إلى النظام',
+                'ip_address' => $request->ip(),
+            ]);
+
             return response()->json([
                 'accessToken'      => $token,
                 'userData'         => [
@@ -92,6 +101,17 @@ class AuthController extends Controller
 
     public function logout(Request $request): JsonResponse
     {
+        // Log activity before revoking token
+        $user = $request->user();
+        if ($user) {
+            ActivityLog::create([
+                'user_id' => $user->id,
+                'action'  => 'logout',
+                'description' => 'تم تسجيل الخروج من النظام',
+                'ip_address' => $request->ip(),
+            ]);
+        }
+
         // Revoke only the current token (this device), keep other devices logged in
         $token = $request->user()?->currentAccessToken();
         if ($token) {

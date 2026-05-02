@@ -7,8 +7,50 @@ use App\Models\Branch;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
+use Mpdf\Mpdf;
+
 class BranchController extends Controller
 {
+    public function exportPDF(Request $request)
+    {
+        $query = Branch::with(['manager', 'deputy']);
+
+        if ($q = $request->get('q')) {
+            $query->where(function ($sub) use ($q) {
+                $sub->where('name', 'LIKE', "%{$q}%")
+                    ->orWhere('governorate', 'LIKE', "%{$q}%")
+                    ->orWhere('location', 'LIKE', "%{$q}%");
+            });
+        }
+
+        if ($governorate = $request->get('governorate')) {
+            $query->where('governorate', $governorate);
+        }
+
+        $branches = $query->orderBy('id', 'asc')->get();
+
+        $fields = $request->get('fields') ? explode(',', $request->get('fields')) : [
+            'name', 'location', 'governorate', 'managerName', 'deputyName'
+        ];
+
+        $html = view('branches.pdf', compact('branches', 'fields'))->render();
+
+        $mpdf = new Mpdf([
+            'mode' => 'utf-8',
+            'format' => 'A4-L',
+            'default_font' => 'dejavusans',
+            'directionality' => 'rtl',
+            'autoScriptToLang' => true,
+            'autoLangToFont' => true,
+        ]);
+
+        $mpdf->WriteHTML($html);
+
+        return response($mpdf->Output('قائمة_الفروع_' . now()->format('Y-m-d') . '.pdf', 'S'))
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', 'attachment; filename="قائمة_الفروع_' . now()->format('Y-m-d') . '.pdf"');
+    }
+
     public function index(Request $request): JsonResponse
     {
         $query = Branch::with(['manager', 'deputy']);

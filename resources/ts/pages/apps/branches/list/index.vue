@@ -122,13 +122,10 @@ const goToBranchPlan = async (branchId: number) => {
 // 👉 Export
 const exportFields = [
   { key: 'name', title: 'اسم الفرع', default: true },
-  { key: 'short_name', title: 'الاسم المختصر', default: true },
-  { key: 'location', title: 'المكان', default: true },
+  { key: 'location', title: 'المكان / العنوان', default: true },
   { key: 'governorate', title: 'المحافظة', default: true },
   { key: 'managerName', title: 'مدير الفرع', default: true },
   { key: 'deputyName', title: 'المعاون', default: true },
-  { key: 'employees_count', title: 'عدد الموظفين', default: false },
-  { key: 'insurance_no', title: 'رقم التأمين', default: false },
 ]
 
 const isExportDialogVisible = ref(false)
@@ -147,13 +144,10 @@ const handleExport = (type: 'pdf' | 'excel', selectedFields: string[]) => {
 const exportToExcel = (selectedFields: string[]) => {
   const allFieldsMap: Record<string, (b: BranchWithNames) => [string, string]> = {
     name: b => ['اسم الفرع', b.name || ''],
-    short_name: b => ['الاسم المختصر', b.short_name || ''],
-    location: b => ['المكان', b.location || ''],
+    location: b => ['المكان / العنوان', b.location || ''],
     governorate: b => ['المحافظة', b.governorate || ''],
     managerName: b => ['مدير الفرع', b.managerName || ''],
     deputyName: b => ['المعاون', b.deputyName || ''],
-    employees_count: b => ['عدد الموظفين', String(b.employees_count ?? '')],
-    insurance_no: b => ['رقم التأمين', b.insurance_no || ''],
   }
 
   const data = branches.value.map(b => {

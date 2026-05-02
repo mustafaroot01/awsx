@@ -4,9 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Traits\LogsActivity;
 
 class Evaluation extends Model
 {
+    use LogsActivity;
     protected $fillable = [
         'period_id',
         'employee_id',

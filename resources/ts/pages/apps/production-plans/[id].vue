@@ -87,6 +87,33 @@ const lockPlan = async () => {
     locking.value = false
   }
 }
+
+const exportPlanPDF = async () => {
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || '/api'
+  const accessToken = useCookie('accessToken').value
+  const url = `${baseUrl}/apps/production-plans/${planId.value}/export-pdf`
+
+  try {
+    const response = await fetch(url, {
+      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+    })
+
+    if (!response.ok) return
+
+    const blob = await response.blob()
+    const downloadUrl = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = downloadUrl
+    a.download = `تفاصيل_الخطة_${plan.value.year}.pdf`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    window.URL.revokeObjectURL(downloadUrl)
+  }
+  catch (e) {
+    console.error('Export failed:', e)
+  }
+}
 </script>
 
 <template>
@@ -124,6 +151,15 @@ const lockPlan = async () => {
           </div>
           <!-- Actions -->
           <div class="d-flex gap-2 flex-wrap">
+            <VBtn
+              size="small"
+              variant="elevated"
+              color="info"
+              prepend-icon="tabler-printer"
+              @click="exportPlanPDF"
+            >
+              طباعة التقرير التفصيلي
+            </VBtn>
             <VBtn v-if="!plan.isLocked" size="small" variant="tonal" color="warning"
               prepend-icon="tabler-lock" :loading="locking" @click="lockPlan">
               قفل الخطة

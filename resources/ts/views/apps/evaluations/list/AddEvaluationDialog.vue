@@ -176,6 +176,23 @@ const totalScore = computed(() => {
   return employeePoints + qualitativePointsTotal.value
 })
 
+const performanceGrade = computed(() => {
+  const total = qualitativePointsTotal.value
+  if (total >= 30) return 'ممتاز'
+  if (total >= 25) return 'جيد جداً'
+  if (total >= 20) return 'جيد'
+  if (total >= 15) return 'مقبول'
+  return 'ضعيف'
+})
+
+const gradeColor = (grade: string) => {
+  if (grade === 'ممتاز') return 'success'
+  if (grade === 'جيد جداً') return 'info'
+  if (grade === 'جيد') return 'primary'
+  if (grade === 'مقبول') return 'warning'
+  return 'error'
+}
+
 // Maximum possible = max employee points (25+15+7+maxAdmin) + 5 criteria × 7
 const maxScore = computed(() => {
   const maxAdmin = adminPositions.value.length ? Math.max(...adminPositions.value.map(p => p.points), 0) : 0
@@ -370,7 +387,11 @@ const selectedEmployee = computed(() => {
               <VCard variant="outlined" class="pa-5 h-100 bg-var-theme-background">
                 <!-- Header -->
                 <div class="text-center mb-4">
-                  <div class="text-overline">المجموع الكلي</div>
+                  <div class="text-overline">التقدير الحالي</div>
+                  <VChip :color="gradeColor(performanceGrade)" variant="elevated" class="mb-2 font-weight-bold px-6">
+                    {{ performanceGrade }}
+                  </VChip>
+                  <div class="text-overline mt-2">المجموع الكلي</div>
                   <div class="text-h2 font-weight-black text-primary">{{ totalScore }}</div>
                 </div>
 

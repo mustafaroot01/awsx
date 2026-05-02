@@ -3,6 +3,8 @@ import { useRouter, useRoute } from 'vue-router'
 import type { ProductionPlan } from '@db/apps/production-plans/types'
 import { showPermissionError } from '@/utils/api'
 import { useConfirmDelete } from '@/composables/useConfirmDelete'
+import ExportFieldsDialog from '@/views/apps/employees/list/ExportFieldsDialog.vue'
+import * as XLSX from 'xlsx'
 
 const router = useRouter()
 const route = useRoute()
@@ -127,6 +129,106 @@ const viewPlanTargets = (plan: ProductionPlan) => {
   previewTargets.value = Object.values(grouped)
   isPreviewDialogOpen.value = true
 }
+
+// 👉 Export
+const isExportDialogVisible = ref(false)
+
+const exportFields = [
+  { key: 'year', title: 'السنة', default: true },
+  { key: 'title', title: 'العنوان', default: true },
+  { key: 'total_amount', title: 'إجمالي الخطة', default: true },
+  { key: 'branches', title: 'تفاصيل الفروع المشمولة', default: true },
+  { key: 'is_locked', title: 'الحالة', default: false },
+]
+
+const handleExport = (type: 'pdf' | 'excel', selectedFields: string[]) => {
+  if (type === 'excel')
+    exportToExcel(selectedFields)
+  else
+    exportToPDF(selectedFields)
+}
+
+const exportToExcel = (selectedFields: string[]) => {
+  const allFieldsMap: Record<string, (p: any) => [string, string]> = {
+    year: p => ['السنة', String(p.year)],
+    title: p => ['العنوان', p.title || ''],
+    total_amount: p => ['إجمالي الخطة', String(p.totalAmount ?? p.total_amount ?? 0)],
+    is_locked: p => ['الحالة', p.isLocked || p.is_locked ? 'مقفلة' : 'مفتوحة'],
+    branches: p => {
+      const branchDetails = (p.branchTargets || [])
+        .reduce((acc: any, bt: any) => {
+          if (!acc[bt.branchName]) {
+            acc[bt.branchName] = { total: 0, life: 0, health: 0, property: 0 }
+          }
+          acc[bt.branchName].total += bt.targetAmount
+          if (bt.category === 'life') acc[bt.branchName].life += bt.targetAmount
+          else if (bt.category === 'group_health') acc[bt.branchName].health += bt.targetAmount
+          else acc[bt.branchName].property += bt.targetAmount
+          return acc
+        }, {})
+      
+      const summary = Object.entries(branchDetails)
+        .map(([name, d]: [string, any]) => {
+          return `${name}: ${new Intl.NumberFormat('ar-IQ').format(d.total)} (حياة: ${d.life} | صحي: ${d.health} | ممتلكات: ${d.property})`
+        })
+        .join(' \n ')
+      
+      return ['تفاصيل الفروع', summary]
+    }
+  }
+
+  // Add branches field to export if not already there but requested by logic
+  const fieldsToExport = [...selectedFields]
+  if (!fieldsToExport.includes('branches')) fieldsToExport.push('branches')
+
+  const data = plans.value.map(p => {
+    const obj: Record<string, string> = {}
+    selectedFields.forEach(key => {
+      const [label, value] = allFieldsMap[key](p)
+      obj[label] = value
+    })
+    return obj
+  })
+
+  const ws = XLSX.utils.json_to_sheet(data)
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'الخطط الإنتاجية')
+  XLSX.writeFile(wb, `الخطط_الإنتاجية_${new Date().toISOString().split('T')[0]}.xlsx`)
+}
+
+const exportToPDF = async (selectedFields: string[]) => {
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || '/api'
+  const params = new URLSearchParams()
+  if (selectedYear.value) params.append('year', String(selectedYear.value))
+  params.append('fields', selectedFields.join(','))
+
+  const accessToken = useCookie('accessToken').value
+  const url = `${baseUrl}/apps/production-plans/export-pdf?${params.toString()}`
+
+  try {
+    const response = await fetch(url, {
+      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+    })
+
+    if (!response.ok) {
+      // showNotification('فشل تصدير PDF', 'error')
+      return
+    }
+
+    const blob = await response.blob()
+    const downloadUrl = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = downloadUrl
+    a.download = `الخطط_الإنتاجية_${new Date().toISOString().split('T')[0]}.pdf`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    window.URL.revokeObjectURL(downloadUrl)
+  }
+  catch {
+    // showNotification('فشل تصدير PDF', 'error')
+  }
+}
 </script>
 
 <template>
@@ -173,6 +275,14 @@ const viewPlanTargets = (plan: ProductionPlan) => {
       <VDivider />
 
       <VCardText class="d-flex flex-wrap justify-end gap-4">
+        <VBtn
+          variant="tonal"
+          color="secondary"
+          prepend-icon="tabler-upload"
+          @click="isExportDialogVisible = true"
+        >
+          تصدير
+        </VBtn>
         <VBtn v-if="$can('create', 'ProductionPlan')" prepend-icon="tabler-plus" @click="openAddPage">إضافة خطة</VBtn>
       </VCardText>
 
@@ -422,6 +532,12 @@ const viewPlanTargets = (plan: ProductionPlan) => {
         </VCardText>
       </VCard>
     </VDialog>
+    
+    <ExportFieldsDialog
+      v-model="isExportDialogVisible"
+      :fields="exportFields"
+      @export="handleExport"
+    />
 
   </section>
 </template>

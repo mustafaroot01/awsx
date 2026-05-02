@@ -100,6 +100,7 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/apps/branches/comparison',   [BranchController::class, 'comparison']) ->middleware('permission:read.Statistics');
     Route::get('/apps/branches/roi-analysis', [BranchController::class, 'roiAnalysis'])->middleware('permission:read.Statistics');
     Route::get('/apps/branches/{branch}/production-plan', [BranchController::class, 'productionPlan'])->middleware('permission:read.ProductionPlan');
+    Route::get('/apps/branches/export-pdf',   [BranchController::class, 'exportPDF'])  ->middleware('permission:read.Branch');
     Route::apiResource('apps/branches', BranchController::class)->middleware([
         'index'   => 'permission:read.Branch',
         'show'    => 'permission:read.Branch',
@@ -110,6 +111,8 @@ Route::middleware('auth:api')->group(function () {
 
     // ── Production Plans ──────────────────────────────────────────
     Route::get('/apps/production-plans/breakthroughs',                 [ProductionPlanController::class, 'breakthroughs'])->middleware('permission:read.Statistics');
+    Route::get('/apps/production-plans/export-pdf', [ProductionPlanController::class, 'exportPDF'])->middleware('permission:read.ProductionPlan');
+    Route::get('/apps/production-plans/{productionPlan}/export-pdf',   [ProductionPlanController::class, 'exportDetailedPDF'])->middleware('permission:read.ProductionPlan');
     Route::post('/apps/production-plans/{productionPlan}/lock',        [ProductionPlanController::class, 'lock'])         ->middleware('permission:update.ProductionPlan');
     Route::get('/apps/production-plans/{productionPlan}/achievements', [ProductionPlanController::class, 'achievements']) ->middleware('permission:read.ProductionPlan');
     Route::apiResource('apps/production-plans', ProductionPlanController::class)->middleware([

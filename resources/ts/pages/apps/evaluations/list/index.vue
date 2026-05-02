@@ -145,7 +145,7 @@ const tableData = computed(() => {
     const evaluation = evaluations.value.find(ev => ev.employeeId === emp.id)
     return {
       employeeId: emp.id,
-      employeeName: `${emp.firstName} ${emp.lastName}`,
+      employeeName: [emp.firstName, emp.lastName].filter(Boolean).join(' '),
       employeeNo: emp.employeeNo,
       branchName: emp.branch?.name ?? 'المكتب الرئيسي',
       evaluation: evaluation ?? null,
@@ -252,6 +252,25 @@ const gradeColor = (grade: string) => {
   if (grade === 'جيد') return 'primary'
   if (grade === 'مقبول') return 'warning'
   return 'error'
+}
+
+const getQualitativeTotal = (ev: any) => {
+  if (!ev) return 0
+  const map: any = { 'ممتاز': 7, 'جيد جداً': 6, 'جيد': 5, 'متوسط': 4, 'ضعيف': 3, 'بلا تقييم': 0 }
+  return (map[ev.efficiencyExperience] || 0) +
+         (map[ev.speedOfAchievement] || 0) +
+         (map[ev.senseOfResponsibility] || 0) +
+         (map[ev.behaviorWithOthers] || 0) +
+         (map[ev.attendanceCommitment] || 0)
+}
+
+const getQualitativeGrade = (ev: any) => {
+  const total = getQualitativeTotal(ev)
+  if (total >= 30) return 'ممتاز'
+  if (total >= 25) return 'جيد جداً'
+  if (total >= 20) return 'جيد'
+  if (total >= 15) return 'مقبول'
+  return 'ضعيف'
 }
 
 const savePeriod = async (data: any) => {
@@ -508,12 +527,16 @@ const openPrintDialog = async (ev: any) => {
             </template>
 
             <template #item.totalScore="{ item }">
-              <span v-if="item.isEvaluated" class="font-weight-black text-h6">{{ item.evaluation.totalScore }}</span>
+              <span v-if="item.isEvaluated" class="font-weight-black text-h6">
+                {{ getQualitativeTotal(item.evaluation) }}
+              </span>
               <span v-else class="text-disabled">—</span>
             </template>
 
             <template #item.grade="{ item }">
-              <VChip v-if="item.isEvaluated" :color="gradeColor(item.evaluation.grade ?? '')" size="small" label>{{ item.evaluation.grade }}</VChip>
+              <VChip v-if="item.isEvaluated" :color="gradeColor(getQualitativeGrade(item.evaluation))" size="small" label>
+                {{ getQualitativeGrade(item.evaluation) }}
+              </VChip>
               <span v-else class="text-disabled">—</span>
             </template>
 
