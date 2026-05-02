@@ -35,6 +35,10 @@ export const $api = ofetch.create({
     
     // Add common headers
     options.headers.append('Accept', 'application/json')
+
+    // Prevent browser from caching API GET responses (fixes stale data after add/edit/delete)
+    options.headers.append('Cache-Control', 'no-cache, no-store, must-revalidate')
+    options.headers.append('Pragma', 'no-cache')
   },
   async onResponseError({ request, options, response }) {
     console.error('API Error:', response.status, response._data)

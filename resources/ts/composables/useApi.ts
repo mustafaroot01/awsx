@@ -13,6 +13,12 @@ export const useApi = createFetch({
     async beforeFetch({ options }) {
       const accessToken = useCookie('accessToken').value
 
+      options.headers = {
+        ...options.headers,
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+      }
+
       if (accessToken) {
         options.headers = {
           ...options.headers,
